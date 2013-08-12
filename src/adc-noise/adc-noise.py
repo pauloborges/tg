@@ -1,6 +1,13 @@
 #!/usr/bin/env python
 # coding: utf-8
 
+"""
+Esse programa verifica o ruído inserido no processo de conversão do ADC.
+
+Para funcionar corretamente, o computador deve estar conectado pelo USB
+a um Arduino Due com o firmware './adc-noise.ino'.
+"""
+
 import os
 import serial
 import numpy as np
