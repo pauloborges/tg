@@ -23,37 +23,36 @@ for i in xrange(NUM_IGNORED_SAMPLES):
     except:
         pass
 
-while True:
-    voltage = []
-    current = []
-    idx = 0
+voltage = []
+current = []
+idx = 0
 
-    while idx < NUM_SAMPLES:
-        try:
-            v, c = (float(x) for x in arduino.readline().split('#'))
+while idx < NUM_SAMPLES:
+    try:
+        v, c = (float(x) for x in arduino.readline().split('#'))
 
-            voltage.append(v)
-            current.append(c)
+        voltage.append(v)
+        current.append(c)
 
-            idx += 1
-        except ValueError:
-            pass
+        idx += 1
+    except ValueError:
+        pass
 
-    # Desenha o gráfico
-    plt.figure(figsize=IMG_SIZE)
-    plt.title("Voltage and current reading")
-    plt.xlabel("# sample")
-    plt.ylabel("Voltage")
+# Desenha o gráfico
+plt.figure(figsize=IMG_SIZE)
+plt.title("Voltage and current reading")
+plt.xlabel("# sample")
+plt.ylabel("Voltage")
 
-    plt.plot(voltage, "-sk")
-    plt.plot(current, "-or")
-    plt.legend([u"tensão", u"corrente"], loc="best")
+plt.plot(voltage, "-sk")
+plt.plot(current, "-or")
+plt.legend([u"tensão", u"corrente"], loc="best")
 
-    # plt.ylim(0, MAX_SAMPLE)
-    plt.xlim(0, NUM_SAMPLES)
-    plt.grid(True)
+# plt.ylim(0, MAX_SAMPLE)
+plt.xlim(0, NUM_SAMPLES)
+plt.grid(True)
 
-    plt.show()
+plt.show()
 
 arduino.close()
 print

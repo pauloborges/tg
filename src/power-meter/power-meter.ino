@@ -1,4 +1,25 @@
 /**
+ * Copyright (c) 2013 Paulo Sérgio Borges de Oliveira Filho
+ *
+ * Permission is hereby granted, free of charge, to any person obtaining a copy of
+ * this software and associated documentation files (the "Software"), to deal in
+ * the Software without restriction, including without limitation the rights to
+ * use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of
+ * the Software, and to permit persons to whom the Software is furnished to do so,
+ * subject to the following conditions:
+ *
+ * The above copyright notice and this permission notice shall be included in all
+ * copies or substantial portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS
+ * FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
+ * COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER
+ * IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN
+ * CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+ */
+
+/**
  * Esse sketch calcula o consumo energético e envia as informações
  * via Serial.
  *
@@ -12,17 +33,70 @@
  * informações listadas acima e, portanto, não são calculados aqui.
  */
 
+/*****************************************************************************
+ ********************************** PLATFORM *********************************
+ *****************************************************************************/
+#define ARDUINO_PLATFORM AVR
 
-/* Pinos onde a tensão e corrente serão amostradas */
+#if ARDUINO_PLATFORM == AVR
+#define ADC_MAX_VALUE 1023
+#else
+#define ADC_MAX_VALUE 4095
+#endif
+
+
+/*****************************************************************************
+ ************************************ ADC ************************************
+ *****************************************************************************/
 #define VOLTAGE_PIN A0
 #define CURRENT_PIN A1
 
-unsigned short int NUM_SAMPLES;
-float PHASE_CORRECTION;
+#define VOLTAGE_SAMPLING 0
+#define CURRENT_SAMPLING 0
 
-float DIGITAL_TO_ANALOG, V_CALIB, I_CALIB;
-float V_RMS_RATIO, I_RMS_RATIO, P_RMS_RATIO;
+#define PI              3.14159265359
+#define FREQ_60HZ       2 * PI * 60
+#define PHASE_ZERO      0
+#define OFFSET_HALF_ADC (ADC_MAX_VALUE / 2)
 
+#if VOLTAGE_SAMPLING == 1
+#define READ_VOLTAGE(elapsed) analogRead(VOLTAGE_PIN)
+#else
+#define V_AMPLI (ADC_MAX_VALUE / 2)
+#define READ_VOLTAGE(elapsed) \
+    fakeAnalogRead(FREQ_60HZ, PHASE_ZERO, V_AMPLI, OFFSET_HALF_ADC, elapsed)
+#endif
+
+#if CURRENT_SAMPLING == 1
+#define READ_CURRENT(elapsed) analogRead(CURRENT_PIN)
+#else
+#define I_AMPLI (ADC_MAX_VALUE / 10)
+#define I_PHASE 5.0
+#define READ_CURRENT(elapsed) \
+    fakeAnalogRead(FREQ_60HZ, I_PHASE, I_AMPLI, OFFSET_HALF_ADC, elapsed)
+#endif
+
+#define NUM_SAMPLES 1000
+#define PHASE_CORRECTION 1.0
+
+#define V_CALIB 1.0 //107.285     /* 110 VRMS / 1.45 V */
+#define I_CALIB 1.0
+
+/*
+ * Calcula o "quantum" do ADC. O ADC mapeia [0, 3.3] V num intervalo
+ * [0, 1023|4095] (depende do uC). Então cada passo desse intervalo equivale
+ * a 3.3 V / ADC_MAX_VALUE.
+ */
+#define DIGITAL_TO_ANALOG 3.3 / ADC_MAX_VALUE
+
+float V_RATIO = (DIGITAL_TO_ANALOG * V_CALIB) / NUM_SAMPLES;
+float I_RATIO = (DIGITAL_TO_ANALOG * I_CALIB) / NUM_SAMPLES;
+float P_RATIO = (DIGITAL_TO_ANALOG * V_CALIB * I_CALIB) / NUM_SAMPLES;
+
+
+/*****************************************************************************
+ ********************************* VARIABLES *********************************
+ *****************************************************************************/
 int raw_voltage, last_raw_voltage;
 int raw_current, last_raw_current;
 
@@ -36,9 +110,20 @@ double sum_rms_current, rms_current;
 
 double sum_real_power, real_power;
 
+#define MICRO_TO_SECOND 1000000.0
+#define REFRESH_ELAPSED_TIME()                                              \
+    do {                                                                    \
+        float old = seconds_counter;                                        \
+        seconds_counter = (((double) micros()) / MICRO_TO_SECOND);          \
+        if (seconds_counter < 0.0)                                          \
+            ; /*FIXME*/                                                     \
+    } while(0)
+
+double seconds_counter = 0.0;
+
 
 /*****************************************************************************
- * ********************************* SERIAL **********************************
+ *********************************** SERIAL **********************************
  *****************************************************************************/
 void serialEventRun(void) {
     if (Serial.available()) {
@@ -48,48 +133,38 @@ void serialEventRun(void) {
 
 
 /*****************************************************************************
- * ********************************** SETUP **********************************
+ ****************************** FAKE ANALOG READ *****************************
+ *****************************************************************************/
+int fakeAnalogRead(double freq, double phase, double ampl, double offset,
+                                                            double elapsed) {
+    return (int) (ampl * sin(freq * elapsed) + offset);
+}
+
+/*****************************************************************************
+ ************************************ SETUP **********************************
  *****************************************************************************/
 void setup() {
-    Serial.begin(115200);
+    #if ARDUINO_PLATFORM == DUE
     analogReadResolution(12);
+    #endif
+
+    Serial.begin(115200);
     // FIXME: deixar ADC mais rápido.
-
-    /*
-     * Etapa de calibragem.
-     *
-     * FIXME: fazer isso vir do HOST via Serial.
-     * FIXME: documentar.
-     */
-    NUM_SAMPLES = 5000;
-    PHASE_CORRECTION = 1.0;
-
-    /*
-     * Calcula o "quantum" do ADC. O ADC mapeia [0, 3.3] V num intervalo
-     * [0, 4095]. Então cada passo desse intervalo equivale a
-     * 3.3 V / 4095 ~ 0.806 mV.
-     */
-    DIGITAL_TO_ANALOG = 3.3 / 4095;
-
-    // 110 Vrms / 1.45 V
-    V_CALIB = 107.285;
-    I_CALIB = 1.0;
-
-    V_RMS_RATIO = (DIGITAL_TO_ANALOG * V_CALIB) / NUM_SAMPLES;
-    I_RMS_RATIO = (DIGITAL_TO_ANALOG * I_CALIB) / NUM_SAMPLES;
-    P_RMS_RATIO = (DIGITAL_TO_ANALOG * V_CALIB * I_CALIB) / NUM_SAMPLES;
 }
 
 
 /*****************************************************************************
- * ********************************** LOOP ***********************************
+ ************************************ LOOP ***********************************
  *****************************************************************************/
 void loop() {
     /*
      * Inicializa as variáveis para um novo ciclo.
      */
-    raw_voltage = analogRead(VOLTAGE_PIN);
-    // raw_current = analogRead(CURRENT_PIN);
+
+    REFRESH_ELAPSED_TIME();
+    raw_voltage = READ_VOLTAGE(0);
+    raw_current = READ_CURRENT(0);
+
     voltage = fixed_voltage = 0.0;
     current = 0.0;
 
@@ -108,10 +183,11 @@ void loop() {
          * Esse sinal é um inteiro pertencente ao intervalo [0, 4048].
          */
         last_raw_voltage = raw_voltage;
-        // last_raw_current = raw_current;
+        last_raw_current = raw_current;
 
-        raw_voltage = analogRead(VOLTAGE_PIN);
-        // raw_current = analogRead(CURRENT_PIN);
+        REFRESH_ELAPSED_TIME();
+        raw_voltage = READ_VOLTAGE(seconds_counter);
+        raw_current = READ_CURRENT(seconds_counter);
 
         /*
          * Corrige a fase do sinal da tensão.
@@ -129,16 +205,18 @@ void loop() {
         last_fixed_voltage = fixed_voltage;
         fixed_voltage = last_raw_voltage + PHASE_CORRECTION
                         * (raw_voltage - last_raw_voltage);
-        ///// APAGAR
-        fixed_voltage = raw_voltage;
 
         /*
          * Remove o offset de ambas as amostras através de um HPF.
          */
         last_voltage = voltage;
         voltage = 0.996 * (last_voltage + fixed_voltage - last_fixed_voltage);
-        // last_current = current;
-        // current = 0.996 * (last_current + raw_current - last_raw_current);
+        last_current = current;
+        current = 0.996 * (last_current + raw_current - last_raw_current);
+
+        Serial.print(voltage);
+        Serial.print('#');
+        Serial.println(current);
 
         /*
          * Adiciona o quadrado da tensão e o quadrado da corrente nos
@@ -146,25 +224,25 @@ void loop() {
          * RMS.
          */
         sum_rms_voltage += voltage * voltage;
-        // sum_rms_current += current * current;
+        sum_rms_current += current * current;
 
         /*
          * Adiciona o produto da tensão pela corrente no acumulador de potência
          * real para, posteriormente, calcular a potência real.
          */
-        // sum_real_power += voltage * current;
+        sum_real_power += voltage * current;
     }
 
     /*
      * Calcula a tensão e corrente RMS, fazendo a conversão
      */
-    rms_voltage = sqrt(V_RMS_RATIO * sum_rms_voltage);
-    // rms_current = sqrt(I_RMS_RATIO * sum_rms_current);
+    rms_voltage = sqrt(V_RATIO * sum_rms_voltage);
+    rms_current = sqrt(I_RATIO * sum_rms_current);
 
     /*
      * Calcula a potência real.
      */
-    // real_power = P_RMS_RATIO * sum_real_power;
+    real_power = P_RATIO * sum_real_power;
 
     /*
      * Transmite as informações via Serial através de um protocolo *textual*.
@@ -173,9 +251,9 @@ void loop() {
      *
      * [TENSÃO_RMS]#[CORRENTE_RMS]#[POTÊNCIA_REAL]\n
      */
-    Serial.print(rms_voltage);
-    Serial.print('#');
-    Serial.print(rms_current);
-    Serial.print('#');
-    Serial.println(real_power);
+    // Serial.print(rms_voltage);
+    // Serial.print('#');
+    // Serial.print(rms_current);
+    // Serial.print('#');
+    // Serial.println(real_power);
 }
