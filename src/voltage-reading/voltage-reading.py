@@ -8,7 +8,7 @@ import matplotlib.pyplot as plt
 import utils
 
 # Configuração do experimento
-NUM_SAMPLES = 128
+NUM_SAMPLES = 2000
 MAX_SAMPLE  = 1023
 IMG_SIZE    = (18, 10)
 
@@ -19,7 +19,7 @@ voltages = []
 idx = 0
 while idx < NUM_SAMPLES:
     try:
-        voltages.append(int(arduino.readline()))
+        voltages.append(float(arduino.readline()))
         idx += 1
     except ValueError:
         pass
@@ -34,7 +34,7 @@ plt.ylabel("Voltage")
 
 plt.plot(voltages, "-o")
 plt.plot(voltages)
-plt.ylim(0, MAX_SAMPLE)
+# plt.ylim(0, MAX_SAMPLE)
 plt.xlim(0, NUM_SAMPLES)
 plt.grid(True)
 

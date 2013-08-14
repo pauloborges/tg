@@ -17,11 +17,11 @@ def init_arduino(baud):
 	return serial.Serial(SERIAL_PORT, baud)
 
 
-def init_win(width, height):
+def init_win(width, height, title=None):
 	global app
 	app = QtGui.QApplication([])
 
-	win = pg.GraphicsWindow(title=u"Tensão em tempo real")
+	win = pg.GraphicsWindow(title=title)
 	win.resize(width, height)
 
 	return win
