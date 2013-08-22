@@ -91,8 +91,8 @@ a um Arduino Due com o firmware './power-meter.ino'.
 # if __name__ == '__main__':
 #     utils.init_app()
 
-import argparse
 import powermeter
+import argparse
 
 parser = argparse.ArgumentParser()
 
@@ -120,7 +120,8 @@ if hasattr(args, "cycles") and args.cycles <= 0:
 	parser.error("cycles must be a positive value")
 
 if args.action == "snapshot":
-	powermeter.snapshot(args.mode, args.waves, args.cycles,
-												args.fake)
+	powermeter.run("snapshot", args.mode,
+		waves=args.waves, cycles=args.cycles, fake=args.fake)
 elif args.action == "monitor":
-	powermeter.monitor(args.mode, args.waves, args.fake)
+	powermeter.run("monitor", args.mode,
+							waves=args.waves, fake=args.fake)

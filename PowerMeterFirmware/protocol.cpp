@@ -34,7 +34,7 @@ static int parse_int(char *buf, size_t len)
     return result;
 }
 
-static void send_simple_response(char opcode) {
+void send_simple_response(char opcode) {
     if (opcode == RES_OK)
         Serial.println("OK");
     else if (opcode == RES_NO)

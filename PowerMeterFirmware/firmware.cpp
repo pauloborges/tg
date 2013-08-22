@@ -55,6 +55,7 @@ static void snapshot(void)
     //     SEND_AGREGATED_EVENT(ELAPSED_TIME(),
     //                 rms_voltage, rms_current, real_power);
 
+    send_simple_response(RES_OK);
     change_state(STATE_STOPPED);
 }
 
