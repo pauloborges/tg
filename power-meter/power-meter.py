@@ -94,15 +94,33 @@ a um Arduino Due com o firmware './power-meter.ino'.
 import argparse
 import powermeter
 
-parser = argparse.ArgumentParser(description=u"TODO descrição aqui")
-parser.add_argument("--only-samples", type=int, metavar="num_samples",
-                                                        dest="num_samples")
-parser.add_argument("--fake-samples", action="store_true",
-                                                        dest="fake_samples")
+parser = argparse.ArgumentParser()
+
+parser.add_argument('-f', "--fake", action="store_true")
+parser.add_argument('-m', "--mode", choices=["inst", "agreg"],
+									required=True)
+parser.add_argument('-w', "--waves", type=int, required=True)
+
+subparsers = parser.add_subparsers()
+
+snapshot_parser = subparsers.add_parser("snapshot")
+snapshot_parser.set_defaults(action="snapshot")
+snapshot_parser.add_argument("-c", "--cycles", type=int,
+											required=True)
+
+monitor_parser = subparsers.add_parser("monitor")
+monitor_parser.set_defaults(action="monitor")
 
 args = parser.parse_args()
 
-if args.num_samples:
-    powermeter.snapshot(args.num_samples, args.fake_samples)
-else:
-    powermeter.monitor(args.fake_samples)
+if args.waves <= 0:
+	parser.error("waves must be a positive value")
+
+if hasattr(args, "cycles") and args.cycles <= 0:
+	parser.error("cycles must be a positive value")
+
+if args.action == "snapshot":
+	powermeter.snapshot(args.mode, args.waves, args.cycles,
+												args.fake)
+elif args.action == "monitor":
+	powermeter.monitor(args.mode, args.waves, args.fake)

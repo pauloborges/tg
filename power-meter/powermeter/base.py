@@ -1,33 +1,37 @@
 # coding: utf-8
 
 from powermeter.arduino import Arduino
-import struct
+
+modes = {
+    "inst":  "I",
+    "agreg": "A",
+}
 
 
-def snapshot(size, fake):
+def snapshot(mode, waves, cycles, fake):
     with Arduino() as arduino:
-        ok = arduino.snapshot(size, fake)
+        mode = modes[mode]
+        ok = arduino.snapshot(mode, waves, cycles, fake)
 
         if not ok:
-            raise IOError(u"Arduino rejeitou a conexão")
+            raise IOError("Arduino refused to snapshot")
 
-        print u"Coletando %d amostras..." % size
+        print ("Collecting samples from %d cycles of %d waves"
+                                            % (cycles, waves))
 
-        while True:
-            print arduino.descriptor.readline(),
-
-        # for sample in arduino.samples():
-        #     pass
+        for sample in arduino.samples():
+            print sample
 
 
-def monitor(fake,):
+def monitor(mode, waves, fake):
     with Arduino() as arduino:
-        ok = arduino.monitor(fake)
+        mode = modes[mode]
+        ok = arduino.monitor(mode, waves, fake)
 
         if not ok:
-            raise IOError(u"")
+            raise IOError(u"Arduino refused to monitor")
 
-        print u"Coletando amostras... para interromper pressione ^C."
+        print "Collecting samples... Press ^C to interrupt"
 
         try:
             for sample in arduino.samples():
@@ -35,5 +39,4 @@ def monitor(fake,):
                 pass
 
         except KeyboardInterrupt:
-            # O __exit__ do ContextManager irá enviar um STOP request
             pass
