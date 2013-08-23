@@ -11,7 +11,8 @@ typedef void (*current_state_func_t) (void);
 
 void setup_firmware(void);
 void change_state(char new_state);
-void handle_incoming_data(void);
+
+void serialEventRun(void);
 
 extern current_state_func_t current_state_func;
 

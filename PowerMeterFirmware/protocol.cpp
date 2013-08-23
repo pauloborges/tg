@@ -199,7 +199,7 @@ static char is_valid_opcode(char opcode)
            opcode == REQ_MONITOR;
 }
 
-void new_incoming_data(void)
+void handle_incoming_data(void)
 {
     int len = Serial.readBytesUntil(CONF_MESSAGE_END,
                             message_buffer, CONF_BUFFER_LEN);

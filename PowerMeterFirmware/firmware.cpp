@@ -10,6 +10,9 @@ current_state_func_t current_state_func;
 
 char current_state;
 
+unsigned int num_waves_remaining;
+unsigned int num_cycles_remaining;
+
 // ----------------------------------------------------------
 
 static void stopped(void)
@@ -38,31 +41,54 @@ static void stopped_exit(void)
 static void snapshot(void)
 {
     char inst_mode = powermeter.mode == INSTANTANEOUS_MODE;
+    num_waves_remaining = powermeter.num_waves;
 
-    for (unsigned int i = powermeter.num_cycles;
-                                                i > 0; i--) {
+    RESET_ACCUMULATORS();
+
+    unsigned long t = micros();
+    int num_samples = 0;
+
+    while (num_waves_remaining) {
+        num_samples++;
+
         REFRESH_ELAPSED_TIME();
         sample();
 
-        // process
-
         if (inst_mode)
             SEND_INSTANTANEOUS_EVENT(ELAPSED_TIME(),
-                                raw_voltage, raw_current);
+                                        voltage, current);
+
+        if (NEW_WAVE_STARTING())
+            num_waves_remaining--;
     }
 
-    // if (!inst_mode)
-    //     SEND_AGREGATED_EVENT(ELAPSED_TIME(),
-    //                 rms_voltage, rms_current, real_power);
+    if (!inst_mode) {
+        rms_voltage = sqrt(sum_rms_voltage / num_samples);
+        rms_current = sqrt(sum_rms_current / num_samples);
+        real_power = sum_real_power / num_samples;
 
-    send_simple_response(RES_OK);
-    change_state(STATE_STOPPED);
+        SEND_AGREGATED_EVENT(ELAPSED_TIME(),
+                    rms_voltage, rms_current, real_power);
+
+        // t = (micros() - t) / num_samples;
+        // DEBUG_INIT();
+        // DEBUG("num_samples: "); DEBUG(num_samples);
+        // DEBUG(" us/sample: "); DEBUG_END(t);
+    }
+
+    num_cycles_remaining--;
+    if (!num_cycles_remaining) {
+        send_simple_response(RES_OK);
+        change_state(STATE_STOPPED);
+    }
 }
 
 static void snapshot_enter(void)
 {
+    num_cycles_remaining = powermeter.num_cycles;
+    
     update_sample_function();
-    reset_power_meter();
+    reset_powermeter();
 }
 
 static void snapshot_exit(void)
@@ -78,13 +104,14 @@ static void monitor(void)
 
 static void monitor_enter(void)
 {
+    num_cycles_remaining = powermeter.num_cycles;
+
     update_sample_function();
-    reset_power_meter();
+    reset_powermeter();
 }
 
 static void monitor_exit(void)
 {
-    // send_simple_response(RES_END);
 }
 
 // ----------------------------------------------------------
@@ -142,7 +169,9 @@ void setup_firmware(void)
     change_state(STATE_STOPPED);
 }
 
-void handle_incoming_data(void)
+void serialEventRun(void)
 {
-    new_incoming_data();
+    if (Serial.available() > 0) {
+        handle_incoming_data();
+    }
 }

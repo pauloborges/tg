@@ -33,7 +33,7 @@ extern char message_buffer[CONF_BUFFER_LEN];
 
 void setup_protocol(void);
 void send_simple_response(char opcode);
-void new_incoming_data(void);
+void handle_incoming_data(void);
 
 #define SEND_INSTANTANEOUS_EVENT(elapsed, voltage, current)  \
     do {                                                     \

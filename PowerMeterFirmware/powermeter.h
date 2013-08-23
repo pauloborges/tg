@@ -41,8 +41,36 @@ extern int last_raw_voltage;
 extern int raw_current;
 extern int last_raw_current;
 
+extern float fixed_voltage;
+extern float last_fixed_voltage;
+
+extern float voltage;
+extern float last_voltage;
+
+extern float current;
+extern float last_current;
+
+extern float sum_rms_voltage;
+extern float rms_voltage;
+
+extern float sum_rms_current;
+extern float rms_current;
+
+extern float sum_real_power;
+extern float real_power;
+
 void update_sample_function(void);
-void reset_power_meter(void);
+void reset_powermeter(void);
 void setup_powermeter(void);
+
+#define NEW_WAVE_STARTING()                                 \
+    (last_current <= 0 && current >= 0)
+
+#define RESET_ACCUMULATORS()                                \
+    do {                                                    \
+        sum_rms_voltage = 0.0;                              \
+        sum_rms_current = 0.0;                              \
+        sum_real_power = 0.0;                               \
+    } while (0)
 
 #endif
