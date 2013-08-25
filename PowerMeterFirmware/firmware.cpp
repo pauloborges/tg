@@ -13,6 +13,8 @@ char current_state;
 unsigned int num_waves_remaining;
 unsigned int num_cycles_remaining;
 
+unsigned int num_samples;
+
 // ----------------------------------------------------------
 
 static void stopped(void)
@@ -44,9 +46,7 @@ static void snapshot(void)
     num_waves_remaining = powermeter.num_waves;
 
     RESET_ACCUMULATORS();
-
-    unsigned long t = micros();
-    int num_samples = 0;
+    num_samples = 0;
 
     while (num_waves_remaining) {
         num_samples++;
@@ -58,8 +58,9 @@ static void snapshot(void)
             SEND_INSTANTANEOUS_EVENT(ELAPSED_TIME(),
                                         voltage, current);
 
-        if (NEW_WAVE_STARTING())
+        if (NEW_WAVE_STARTING()) {
             num_waves_remaining--;
+        }
     }
 
     if (!inst_mode) {
@@ -70,10 +71,7 @@ static void snapshot(void)
         SEND_AGREGATED_EVENT(ELAPSED_TIME(),
                     rms_voltage, rms_current, real_power);
 
-        // t = (micros() - t) / num_samples;
-        // DEBUG_INIT();
-        // DEBUG("num_samples: "); DEBUG(num_samples);
-        // DEBUG(" us/sample: "); DEBUG_END(t);
+        // DEBUG_INIT(); DEBUG_END(num_samples);
     }
 
     num_cycles_remaining--;
@@ -161,10 +159,10 @@ void setup_firmware(void)
     setup_protocol();
     setup_powermeter();
 
-    DEBUG_INIT();
-    DEBUG_END("initializing firmware");
-
     pinMode(LED_PIN, OUTPUT);
+
+    DEBUG_INIT();
+    DEBUG_END("firmware initialized");
 
     change_state(STATE_STOPPED);
 }

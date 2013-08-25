@@ -2,6 +2,7 @@
 #include "config.h"
 #include "debug.h"
 #include "timer.h"
+#include "protocol.h"
 #include "powermeter.h"
 
 #define PI              3.14159265359
@@ -91,7 +92,7 @@ static void fake_sample(void)
 
 static void real_sample(void)
 {
-    last_raw_voltage = raw_current;
+    last_raw_voltage = raw_voltage;
     last_raw_current = raw_current;
 
     raw_voltage = REAL_VOLTAGE_SAMPLE();
@@ -109,7 +110,7 @@ static void real_sample(void)
 
     // FIXME HFP
     voltage = fixed_voltage - OFFSET_HALF_ADC;
-    current = current - OFFSET_HALF_ADC;
+    current = raw_current - OFFSET_HALF_ADC;
 
     sum_rms_voltage += voltage * voltage;
     sum_rms_current += current * current;
@@ -130,8 +131,6 @@ void reset_powermeter(void)
     RESET_ELAPSED_TIME();
     sample();
 
-    // Esse laço é executado até a curva estiver subindo,
-    // ultrapassando a metade do ADC.
     while (1) {
         REFRESH_ELAPSED_TIME();
         sample();

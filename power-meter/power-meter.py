@@ -23,6 +23,9 @@ import argparse
 import powermeter
 
 MODE_OPTIONS = powermeter.MODE_OPTIONS.keys()
+BAUD_OPTIONS = ["300", "600", "1200", "2400", "4800", "9600",
+                "14400", "19200", "28800", "38400", "57600",
+                "115200"]
 CALIBRATION_FILE = "calibration"
 
 parser      = argparse.ArgumentParser()
@@ -40,8 +43,11 @@ snapshot.add_argument("-w", dest="number_waves", type=int,
                         required=True)
 snapshot.add_argument("-c", dest="number_cycles",type=int,
                         required=True)
+snapshot.add_argument("-b", dest="baud", choices=BAUD_OPTIONS,
+                        default="9600", help="baud rate")
 snapshot.add_argument("calibration", nargs='?',
-                        default=CALIBRATION_FILE)
+                        default=CALIBRATION_FILE,
+                        help="calibration file")
 
 # monitor
 monitor.set_defaults(action="monitor")
@@ -50,8 +56,11 @@ monitor.add_argument("-f", "--fake", dest="fake",
                         action="store_true")
 monitor.add_argument("-w", dest="number_waves", type=int,
                         required=True)
+monitor.add_argument("-b", dest="baud", choices=BAUD_OPTIONS,
+                        default="9600", help="baud rate")
 monitor.add_argument("calibration", nargs='?',
-                        default=CALIBRATION_FILE)
+                        default=CALIBRATION_FILE,
+                        help="calibration file")
 
 # calibrate
 calibrate.set_defaults(action="calibrate")

@@ -4,8 +4,8 @@
 #include "config.h"
 #include "powermeter.h"
 
-#ifndef CONF_SERIAL_BAUD
-#define CONF_SERIAL_BAUD 115200
+#ifndef CONF_START_SERIAL_BAUD
+#define CONF_START_SERIAL_BAUD 9600
 #endif
 
 #ifndef CONF_SERIAL_TIMEOUT
@@ -21,6 +21,8 @@
 #endif
 
 /* Message opcodes */
+#define REQ_BAUD     'B'
+#define REQ_INIT     'T'
 #define REQ_STOP     'S'
 #define REQ_SNAPSHOT 'P'
 #define REQ_MONITOR  'M'
@@ -35,21 +37,31 @@ void setup_protocol(void);
 void send_simple_response(char opcode);
 void handle_incoming_data(void);
 
+#if CONF_ARDUINO_PLATFORM == ARM
+#ifdef CONF_ARM_USB_ENABLED
+#define SERIAL SerialUSB
+#else
+#define SERIAL Serial
+#endif
+#else
+#define SERIAL Serial
+#endif
+
 #define SEND_INSTANTANEOUS_EVENT(elapsed, voltage, current)  \
     do {                                                     \
-        Serial.println(RES_INST_EV);                         \
-        Serial.println(1000 * elapsed);                      \
-        Serial.println(voltage);                             \
-        Serial.println(current);                             \
+        SERIAL.println(RES_INST_EV);                         \
+        SERIAL.println(1000 * elapsed);                      \
+        SERIAL.println(voltage);                             \
+        SERIAL.println(current);                             \
     } while (0)
 
 #define SEND_AGREGATED_EVENT(elapsed, vrms, irms, rpower)    \
     do {                                                     \
-        Serial.println(RES_AGRE_EV);                         \
-        Serial.println(1000 * elapsed);                      \
-        Serial.println(vrms);                                \
-        Serial.println(irms);                                \
-        Serial.println(rpower);                              \
+        SERIAL.println(RES_AGRE_EV);                         \
+        SERIAL.println(1000 * elapsed);                      \
+        SERIAL.println(vrms);                                \
+        SERIAL.println(irms);                                \
+        SERIAL.println(rpower);                              \
     } while (0)
 
 #endif

@@ -11,12 +11,10 @@ char message_buffer[CONF_BUFFER_LEN];
 
 void setup_protocol(void)
 {
-    Serial.begin(CONF_SERIAL_BAUD);
+    SERIAL.begin(CONF_START_SERIAL_BAUD);
+    // while (!SERIAL);
 
-    // while (!Serial);
-    DEBUG_INIT(); DEBUG_END("serial initialized");
-
-    Serial.setTimeout(CONF_SERIAL_TIMEOUT);
+    SERIAL.setTimeout(CONF_SERIAL_TIMEOUT);
 }
 
 static int parse_int(char *buf, size_t len)
@@ -36,9 +34,9 @@ static int parse_int(char *buf, size_t len)
 
 void send_simple_response(char opcode) {
     if (opcode == RES_OK)
-        Serial.println("OK");
+        SERIAL.println("OK");
     else if (opcode == RES_NO)
-        Serial.println("NO");
+        SERIAL.println("NO");
 }
 
 static void handle_req_stop_message(void)
@@ -194,14 +192,16 @@ static void handle_message(void)
 
 static char is_valid_opcode(char opcode)
 {
-    return opcode == REQ_STOP ||
+    return opcode == REQ_BAUD ||
+           opcode == REQ_INIT ||
+           opcode == REQ_STOP ||
            opcode == REQ_SNAPSHOT ||
            opcode == REQ_MONITOR;
 }
 
 void handle_incoming_data(void)
 {
-    int len = Serial.readBytesUntil(CONF_MESSAGE_END,
+    int len = SERIAL.readBytesUntil(CONF_MESSAGE_END,
                             message_buffer, CONF_BUFFER_LEN);
 
     if (!len) {

@@ -64,7 +64,7 @@ void reset_powermeter(void);
 void setup_powermeter(void);
 
 #define NEW_WAVE_STARTING()                                 \
-    (last_current <= 0 && current >= 0)
+    (last_voltage <= 0 && voltage >= 0)
 
 #define RESET_ACCUMULATORS()                                \
     do {                                                    \

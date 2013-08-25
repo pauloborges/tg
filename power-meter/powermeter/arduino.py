@@ -1,6 +1,7 @@
 # coding: utf-8
 
 import serial as pyserial
+from time import sleep
 import os
 
 
@@ -33,14 +34,16 @@ class Arduino(object):
         if self.debug:
             print "Serial communication to '%s' with %s bps" % (
                 device, baud)
-        self.serial = pyserial.Serial(device, baud,
-                    timeout=self.timeout, writeTimeout=self.timeout)
+        # self.serial = pyserial.Serial(device, baud,
+        #             timeout=self.timeout, writeTimeout=self.timeout)
+        self.serial = pyserial.Serial(device, baud)
 
 
     def close(self):
         """
         Encerra a conexão Serial com o Arduino.
         """
+        self.serial.flushInput()
         self.serial.close()
         self.serial = None
 

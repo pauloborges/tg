@@ -85,7 +85,7 @@ def loop():
 
 
 def init_func():
-    arduino.start()
+    arduino.start(baud=config.baud)
     arduino.send_message(enc_stop_request())
     update_status(STATUS_STOPPED)
 
@@ -181,14 +181,15 @@ def ui_init_inst():
     voltage_curve = voltage_plot.plot()
     voltage_data = deque(maxlen=DATA_SIZE_LEN)
 
+    win.nextRow()
+
     current_plot = build_plot(win, u"Corrente", "A")
     current_curve = current_plot.plot()
     current_data = deque(maxlen=DATA_SIZE_LEN)
 
     win.nextRow()
 
-    real_power_plot = build_plot(win, u"Potência real", "W",
-                                                colspan=2)
+    real_power_plot = build_plot(win, u"Potência real", "W")
     real_power_curve = real_power_plot.plot()
     real_power_data = deque(maxlen=DATA_SIZE_LEN)
 
@@ -288,7 +289,7 @@ def update_inst(data):
     real_power = config.real_power
 
     elapsed = config.elapsed
-    elapsed.append(data.elapsed)
+    elapsed.append(data.elapsed / 1000)
 
     voltage.data.append(data.voltage)
     current.data.append(data.current)
@@ -308,7 +309,7 @@ def update_agreg(data):
     total_power  = config.total_power
 
     elapsed = config.elapsed
-    elapsed.append(data.elapsed)
+    elapsed.append(data.elapsed / 1000)
 
     total_power_value = data.rms_voltage * data.rms_current
 
@@ -409,3 +410,41 @@ def dec_agreg_sample_response():
     data.real_power = float(message)
 
     return data
+
+## One line option
+# def dec_message(message):
+#     opcode, message = message[0], message[1:]
+
+#     if opcode in (RESPONSE_OK, RESPONSE_NO):
+#         return opcode, None
+#     elif opcode == RESPONSE_INST_SAMPLE:
+#         data = dec_inst_sample_response(message)
+#     elif opcode == RESPONSE_AGREG_SAMPLE:
+#         data = dec_agreg_sample_response(message)
+#     else:
+#         raise ArduinoError("Invalid message opcode: %s" % opcode)
+
+#     return opcode, data
+
+
+# def dec_inst_sample_response(message):
+#     data = Bundle()
+
+#     data.elapsed, data.voltage, data.current = (
+#         float(value) for value in message.split('#')
+#     )
+
+#     return data
+
+
+# def dec_agreg_sample_response(message):
+#     data = Bundle()
+
+#     tmp = (float(value) for value in message.split('#'))
+
+#     data.elapsed = tmp[0]
+#     data.rms_voltage = tmp[1]
+#     data.rms_current = tmp[2]
+#     data.real_power = tmp[3]
+
+#     return data
