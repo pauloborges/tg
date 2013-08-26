@@ -70,7 +70,6 @@ static void fake_sample(void)
     raw_voltage = FAKE_VOLTAGE_SAMPLE();
     raw_current = FAKE_CURRENT_SAMPLE();
 
-    // FIXME
     // last_fixed_voltage = fixed_voltage;
     // fixed_voltage = last_raw_voltage + PHASE_CORRECTION
     //                         * (raw_voltage - last_raw_voltage);
@@ -80,9 +79,8 @@ static void fake_sample(void)
     last_voltage = voltage.number;
     last_current = current.number;
 
-    // FIXME HFP
-    voltage.number = fixed_voltage - OFFSET_HALF_ADC;
-    current.number = raw_current - OFFSET_HALF_ADC;
+    voltage.number = fixed_voltage - powermeter.voltage_offset;
+    current.number = raw_current - powermeter.current_offset;
 
     sum_rms_voltage += voltage.number * voltage.number;
     sum_rms_current += current.number * current.number;
@@ -98,7 +96,6 @@ static void real_sample(void)
     raw_voltage = REAL_VOLTAGE_SAMPLE();
     raw_current = REAL_CURRENT_SAMPLE();
 
-    // FIXME HFP
     // last_fixed_voltage = fixed_voltage;
     // fixed_voltage = last_raw_voltage + PHASE_CORRECTION
     //                         * (raw_voltage - last_raw_voltage);
@@ -108,9 +105,8 @@ static void real_sample(void)
     last_voltage = voltage.number;
     last_current = current.number;
 
-    // FIXME HFP
-    voltage.number = fixed_voltage - OFFSET_HALF_ADC;
-    current.number = raw_current - OFFSET_HALF_ADC;
+    voltage.number = fixed_voltage - powermeter.voltage_offset;
+    current.number = raw_current - powermeter.current_offset;
 
     sum_rms_voltage += voltage.number * voltage.number;
     sum_rms_current += current.number * current.number;
@@ -126,10 +122,13 @@ void update_sample_function(void)
         sample = real_sample;
 }
 
-void reset_powermeter(void)
+void reset_powermeter(uint8_t wait_for_new_wave)
 {
     RESET_ELAPSED_TIME();
     sample();
+
+    if (!wait_for_new_wave)
+        return;
 
     while (1) {
         REFRESH_ELAPSED_TIME();

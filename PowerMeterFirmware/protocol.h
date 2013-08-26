@@ -24,6 +24,7 @@
 #define REQ_STOP     0x01
 #define REQ_SNAPSHOT 0x02
 #define REQ_MONITOR  0x03
+#define REQ_RAW      0x04
 #define RES_OK       0x51
 #define RES_NO       0x52
 #define RES_INST     0x53

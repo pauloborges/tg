@@ -44,10 +44,16 @@ static void handle_req_stop_message(void)
 
 static void handle_req_snapshot_message(void)
 {
+    uint8_t tmp;
+
     uint8_t fake;
     uint8_t mode;
     uint16_t waves;
     uint16_t cycles;
+
+    float_t phasecal;
+    float_t v_offset;
+    float_t i_offset;
 
     if (current_state != STATE_STOPPED) {
         DEBUG_INIT();
@@ -57,15 +63,22 @@ static void handle_req_snapshot_message(void)
     }
 
     // Message format:
-    // OPCODE MODE NUM_WAVES NUM_CYCLES FAKE
-    //   1     1       2         2       1
+    // OPCODE OPTIONS NUM_WAVES NUM_CYCLES PHASECAL V_OFFSET I_OFFSET
+    //   1       1       2         2          4         4        4
 
-    mode = SERIAL.read();
+    tmp = SERIAL.read();
+    mode = tmp & 0x01;
+    fake = tmp & 0x80 >> 7;
+
     waves = SERIAL.read();
     waves |= SERIAL.read() << 8;
+
     cycles = SERIAL.read();
     cycles |= SERIAL.read() << 8;
-    fake = SERIAL.read();
+    
+    SERIAL.readBytes((char *) phasecal.bytes, 4);
+    SERIAL.readBytes((char *) v_offset.bytes, 4);
+    SERIAL.readBytes((char *) i_offset.bytes, 4);
 
     if (!IS_BINARY(fake)) {
         DEBUG_INIT();
@@ -96,16 +109,23 @@ static void handle_req_snapshot_message(void)
     }
 
     DEBUG_INIT(); DEBUG_END("SNAPSHOT params:");
-    DEBUG_INIT(); DEBUG("fake: "); DEBUG_END(fake);
     DEBUG_INIT(); DEBUG("mode: "); DEBUG_END(mode);
+    DEBUG_INIT(); DEBUG("fake: "); DEBUG_END(fake);
     DEBUG_INIT(); DEBUG("num waves: "); DEBUG_END(waves);
     DEBUG_INIT(); DEBUG("num cycles: "); DEBUG_END(cycles);
+    DEBUG_INIT(); DEBUG("phasecal: "); DEBUG_END(phasecal.number);
+    DEBUG_INIT(); DEBUG("v offset: "); DEBUG_END(v_offset.number);
+    DEBUG_INIT(); DEBUG("i offset: "); DEBUG_END(i_offset.number);
 
     powermeter.action = STATE_SNAPSHOT;
     powermeter.fake = fake;
     powermeter.mode = mode;
     powermeter.num_waves = waves;
     powermeter.num_cycles = cycles;
+
+    powermeter.phasecal = phasecal.number;
+    powermeter.voltage_offset = v_offset.number;
+    powermeter.current_offset = i_offset.number;
 
     change_state(STATE_SNAPSHOT);
     send_simple_response(RES_OK);
@@ -117,9 +137,15 @@ error:
 
 static void handle_req_monitor_message(void)
 {
-    unsigned short int fake;
-    unsigned short int mode;
-    unsigned short int waves;
+    uint8_t tmp;
+
+    uint8_t fake;
+    uint8_t mode;
+    uint16_t waves;
+
+    float_t phasecal;
+    float_t v_offset;
+    float_t i_offset;
 
     if (current_state != STATE_STOPPED) {
         DEBUG_INIT();
@@ -129,13 +155,19 @@ static void handle_req_monitor_message(void)
     }
 
     // Message format:
-    // OPCODE MODE NUM_WAVES FAKE
-    //   1     1       2      1
+    // OPCODE OPTIONS NUM_WAVES PHASECAL V_OFFSET I_OFFSET
+    //   1       1       2         4         4        4
 
-    mode = SERIAL.read();
+    tmp = SERIAL.read();
+    mode = tmp & 0x01;
+    fake = tmp & 0x80 >> 7;
+
     waves = SERIAL.read();
     waves |= SERIAL.read() << 8;
-    fake = SERIAL.read();
+    
+    SERIAL.readBytes((char *) phasecal.bytes, 4);
+    SERIAL.readBytes((char *) v_offset.bytes, 4);
+    SERIAL.readBytes((char *) i_offset.bytes, 4);
 
     if (!IS_BINARY(fake)) {
         DEBUG_INIT();
@@ -162,6 +194,9 @@ static void handle_req_monitor_message(void)
     DEBUG_INIT(); DEBUG("fake: "); DEBUG_END(fake);
     DEBUG_INIT(); DEBUG("mode: "); DEBUG_END(mode);
     DEBUG_INIT(); DEBUG("num waves: "); DEBUG_END(waves);
+    DEBUG_INIT(); DEBUG("phasecal: "); DEBUG_END(phasecal.number);
+    DEBUG_INIT(); DEBUG("v offset: "); DEBUG_END(v_offset.number);
+    DEBUG_INIT(); DEBUG("i offset: "); DEBUG_END(i_offset.number);
 
     powermeter.action = STATE_MONITOR;
     powermeter.fake = fake;
@@ -169,7 +204,62 @@ static void handle_req_monitor_message(void)
     powermeter.num_waves = waves;
     powermeter.num_cycles = 1;
 
+    powermeter.phasecal = phasecal.number;
+    powermeter.voltage_offset = v_offset.number;
+    powermeter.current_offset = i_offset.number;
+
     change_state(STATE_MONITOR);
+    send_simple_response(RES_OK);
+    return;
+
+error:
+    send_simple_response(RES_NO);
+}
+
+static void handle_req_raw_message(void)
+{
+    uint8_t fake;
+    uint16_t samples;
+
+    if (current_state != STATE_STOPPED) {
+        DEBUG_INIT();
+        DEBUG_END("arduino busy");
+        send_simple_response(RES_NO);
+        return;
+    }
+
+    // Message format:
+    // OPCODE FAKE NUM_SAMPLES
+    //   1     1       2
+
+    fake = SERIAL.read();
+
+    samples = SERIAL.read();
+    samples |= SERIAL.read() << 8;
+
+    if (!IS_BINARY(fake)) {
+        DEBUG_INIT();
+        DEBUG("invalid fake option: ");
+        DEBUG_END(fake);
+        goto error;
+    }
+
+    if (samples <= 0) {
+        DEBUG_INIT();
+        DEBUG("invalid number of samples: ");
+        DEBUG_END(samples);
+        goto error;
+    }
+
+    DEBUG_INIT(); DEBUG_END("RAW params:");
+    DEBUG_INIT(); DEBUG("fake: "); DEBUG_END(fake);
+    DEBUG_INIT(); DEBUG("num samples: "); DEBUG_END(samples);
+
+    powermeter.action = STATE_RAW;
+    powermeter.fake = fake;
+    powermeter.num_samples = samples;
+
+    change_state(STATE_RAW);
     send_simple_response(RES_OK);
     return;
 
@@ -189,6 +279,9 @@ static void handle_message(uint8_t opcode)
     case REQ_MONITOR:
         handle_req_monitor_message();
         break;
+    case REQ_RAW:
+        handle_req_raw_message();
+        break;
     }
 }
 
@@ -196,7 +289,8 @@ static char is_valid_opcode(uint8_t opcode)
 {
     return opcode == REQ_STOP ||
            opcode == REQ_SNAPSHOT ||
-           opcode == REQ_MONITOR;
+           opcode == REQ_MONITOR ||
+           opcode == REQ_RAW;
 }
 
 void handle_incoming_data(void)

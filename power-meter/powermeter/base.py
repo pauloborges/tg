@@ -14,6 +14,7 @@ import sys
 REQUEST_STOP     = 0x01
 REQUEST_SNAPSHOT = 0x02
 REQUEST_MONITOR  = 0x03
+REQUEST_RAW      = 0x04
 RESPONSE_OK      = 0x51
 RESPONSE_NO      = 0x52
 RESPONSE_INST    = 0x53
@@ -23,8 +24,8 @@ MODE_INST  = "inst"
 MODE_AGREG = "agreg"
 
 MODE_OPTIONS = {
-    MODE_INST:  0x01,
-    MODE_AGREG: 0x02,
+    MODE_INST:  0x00,
+    MODE_AGREG: 0x01,
 }
 
 STATUS_INIT             = 0
@@ -32,15 +33,23 @@ STATUS_STOPPED          = 2
 STATUS_WAIT_SAMPLE_RESP = 3
 STATUS_SAMPLING         = 4
 STATUS_END              = 6
+STATUS_CALIB_WAIT_RESP  = 7
+STATUS_CALIB_PHASE      = 8
+STATUS_CALIB_OFFSET     = 9
+STATUS_CALIB_GAIN       = 10
 
 lazy = functools.partial(lazyfunc, sys.modules[__name__])
 
 status_functions = {
-    STATUS_INIT:             lazy("init_func"),
-    STATUS_STOPPED:          lazy("stopped_func"),
-    STATUS_WAIT_SAMPLE_RESP: lazy("wait_sample_resp_func"),
-    STATUS_SAMPLING:         lazy("sampling_func"),
-    STATUS_END:              lazy("end_func"),
+    STATUS_INIT:                lazy("init_func"),
+    STATUS_STOPPED:             lazy("stopped_func"),
+    STATUS_WAIT_SAMPLE_RESP:    lazy("wait_sample_resp_func"),
+    STATUS_SAMPLING:            lazy("sampling_func"),
+    STATUS_END:                 lazy("end_func"),
+    STATUS_CALIB_WAIT_RESP:     lazy("calib_wait_resp_func"),
+    STATUS_CALIB_PHASE:         lazy("calib_phase_func"),
+    STATUS_CALIB_OFFSET:        lazy("calib_offset_func"),
+    STATUS_CALIB_GAIN:          lazy("calib_gain_func"),
 }
 
 WIN_SIZE = (1000, 600)
@@ -109,13 +118,16 @@ def stopped_func():
         waves = config.number_waves
         cycles = config.number_cycles
         arduino.send_message(enc_snapshot_request(MODE_OPTIONS[mode],
-                                                waves, cycles, fake))
+                                fake, waves, cycles, 1.0, 0.0, 0.0))
     elif action == "monitor":
         fake = config.fake
         mode = config.mode
         waves = config.number_waves
         arduino.send_message(enc_monitor_request(MODE_OPTIONS[mode],
-                                                waves, fake))
+                                        fake, waves, 1.0, 0.0, 0.0))
+    elif action == "calibrate":
+        handle_calibrate_action()
+        return
     else:
         raise ValueError("Invalid action '%s'" % action)
 
@@ -165,6 +177,93 @@ def sampling_func():
 def end_func():
     # Don't do nothing
     pass
+
+
+CALIB_PHASE_OPTIONS = {
+    "waves": 2,
+    "cycles": 1,
+    "phasecal": 1.0,
+    "voff": 0.0,
+    "ioff": 0.0,
+}
+
+CALIB_OFFSET_OPTIONS = {
+    "samples": 1000,
+}
+
+CALIB_GAIN_OPTIONS = {
+    "waves": 2,
+    "cycles": 1,
+    "phasecal": 1.0,
+    "voff": 0.0,
+    "ioff": 0.0,
+}
+
+def handle_calibrate_action():
+    mode = config.mode
+    fake = config.fake
+
+    if mode == "phase":
+        arduino.send_message(enc_snapshot_request(
+            MODE_OPTIONS[MODE_INST], fake, **CALIB_PHASE_OPTIONS))
+    elif mode == "offset":
+        init_ui_calib_offset()
+        update_status(STATUS_CALIB_OFFSET)
+        return
+    else:
+        # TODO lê voff e ioff do arquivo
+        arduino.send_message(enc_snapshot_request(
+            MODE_OPTIONS[MODE_INST], fake, **CALIB_GAIN_OPTIONS))
+
+    update_status(STATUS_CALIB_WAIT_RESP)
+
+
+def calib_phase_func():
+    update_status(STATUS_END)
+
+
+def calib_offset_func():
+    count = 0
+
+    voltage = config.voltage
+    current = config.current
+
+    arduino.send_message(enc_raw_request(config.fake,
+                            **CALIB_OFFSET_OPTIONS))
+
+    message = arduino.read_message()
+    opcode, data = dec_message(message)
+
+    if opcode != RESPONSE_OK:
+            raise ArduinoError("Expecting OK, got %s" % opcode)
+
+    while True:
+        message = arduino.read_message()
+        opcode, data = dec_message(message)
+
+        if opcode == RESPONSE_OK:
+            break
+        elif opcode == RESPONSE_INST:
+            voltage.data.append(data.voltage)
+            current.data.append(data.current)
+        else:
+            raise ArduinoError("Expecting INST, got %s" % opcode)
+
+    # Calcula o OFFSET da tensão
+    V_OFFSET = float(sum(voltage.data)) / len(voltage.data)
+    voltage.curve.setData(voltage.data)
+    voltage.offset.setData([V_OFFSET] * len(voltage.data))
+
+    # Calcula o OFFSET da corrente
+    I_OFFSET = float(sum(current.data)) / len(current.data)
+    current.curve.setData(current.data)
+    current.offset.setData([I_OFFSET] * len(current.data))
+
+    update_status(STATUS_END)
+
+
+def calib_gain_func():
+    update_status(STATUS_END)
 
 
 def build_plot(win, title, unit, y_range=None, x_range=None, col=1):
@@ -291,6 +390,47 @@ def ui_init_agreg():
     config.elapsed = deque(maxlen=DATA_SIZE_LEN)
 
 
+def init_ui_calib_phase():
+    pass
+
+
+def init_ui_calib_offset():
+    win = config.win
+
+    voltage_plot = build_plot(win, u"Tensão", "V")
+    voltage_curve = voltage_plot.plot()
+    voltage_offset = voltage_plot.plot()
+    voltage_data = deque()
+
+    win.nextRow()
+
+    current_plot = build_plot(win, u"Corrente", "A")
+    current_curve = current_plot.plot()
+    current_offset = current_plot.plot()
+    current_data = deque()
+
+
+    config.voltage = Bundle(**{
+        "plot": voltage_plot,
+        "curve": voltage_curve,
+        "data": voltage_data,
+        "offset": voltage_offset,
+    })
+
+    config.current = Bundle(**{
+        "plot": current_plot,
+        "curve": current_curve,
+        "data": current_data,
+        "offset": current_offset,
+    })
+
+    config.elapsed = deque()
+
+
+def init_ui_calib_gain():
+    pass
+
+
 def update_inst(data):
     voltage = config.voltage
     current = config.current
@@ -299,9 +439,12 @@ def update_inst(data):
     elapsed = config.elapsed
     elapsed.append(data.elapsed)
 
-    voltage.data.append(data.voltage)
-    current.data.append(data.current)
-    real_power.data.append(data.voltage * data.current)
+    voltage_value = data.voltage
+    current_value = data.current
+
+    voltage.data.append(voltage_value)
+    current.data.append(current_value)
+    real_power.data.append(voltage_value * current_value)
 
     voltage.curve.setData(elapsed, voltage.data)
     current.curve.setData(elapsed, current.data)
@@ -355,14 +498,20 @@ def enc_stop_request():
     return struct.pack("<B", REQUEST_STOP)
 
 
-def enc_snapshot_request(mode, waves, cycles, fake):
-    return struct.pack("<BBHH?", REQUEST_SNAPSHOT,
-                        mode, waves, cycles, fake)
+def enc_snapshot_request(mode, fake, waves, cycles, phasecal,
+                                                    voff, ioff):
+    options = (fake << 7) | mode
+    return struct.pack("<BBHHfff", REQUEST_SNAPSHOT, options,
+        waves, cycles, phasecal, voff, ioff)
 
 
-def enc_monitor_request(mode, waves, fake):
+def enc_monitor_request(mode, fake, waves, phasecal, voff, ioff):
     return struct.pack("<BBH?", REQUEST_MONITOR,
                         mode, waves, fake)
+
+
+def enc_raw_request(fake, samples):
+    return struct.pack("<B?H", REQUEST_RAW, fake, samples)
 
 
 def dec_message(message):
@@ -395,51 +544,3 @@ def dec_agreg_sample_response(message):
     d.elapsed = time.time() - config.base
 
     return d
-
-
-# def dec_inst_sample_response():
-#     data = Bundle()
-
-#     message = arduino.read_message()
-#     data.elapsed = float(message)
-
-#     message = arduino.read_message()
-#     data.voltage = float(message)
-
-#     message = arduino.read_message()
-#     data.current = float(message)
-
-#     return data
-
-
-# def dec_agreg_sample_response():
-#     data = Bundle()
-
-#     message = arduino.read_message()
-#     data.elapsed = float(message)
-
-#     message = arduino.read_message()
-#     data.rms_voltage = float(message)
-
-#     message = arduino.read_message()
-#     data.rms_current = float(message)
-
-#     message = arduino.read_message()
-#     data.real_power = float(message)
-
-#     return data
-
-## One line option
-# def dec_message(message):
-#     opcode, message = message[0], message[1:]
-
-#     if opcode in (RESPONSE_OK, RESPONSE_NO):
-#         return opcode, None
-#     elif opcode == RESPONSE_INST:
-#         data = dec_inst_sample_response(message)
-#     elif opcode == RESPONSE_AGREG:
-#         data = dec_agreg_sample_response(message)
-#     else:
-#         raise ArduinoError("Invalid message opcode: %s" % opcode)
-
-#     return opcode, data

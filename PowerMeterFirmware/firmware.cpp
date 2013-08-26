@@ -87,10 +87,38 @@ static void sampling_enter(void)
     num_cycles_remaining = powermeter.num_cycles;
     
     update_sample_function();
-    reset_powermeter();
+    reset_powermeter(1);
 }
 
 static void sampling_exit(void)
+{
+}
+
+// ----------------------------------------------------------
+
+static void raw(void)
+{
+    RESET_ACCUMULATORS();
+
+    for (uint16_t i = powermeter.num_samples; i; i--) {
+        REFRESH_ELAPSED_TIME();
+        sample();
+
+        SEND_INSTANTANEOUS_EVENT(ELAPSED_TIME().bytes,
+                                voltage.bytes, current.bytes);
+    }
+
+    send_simple_response(RES_OK);
+    change_state(STATE_STOPPED);
+}
+
+static void raw_enter(void)
+{
+    update_sample_function();
+    reset_powermeter(0);
+}
+
+static void raw_exit(void)
 {
 }
 
@@ -107,6 +135,9 @@ void change_state(char new_state)
         break;
     case STATE_MONITOR:
         sampling_exit();
+        break;
+    case STATE_RAW:
+        raw_exit();
         break;
     }
 
@@ -128,6 +159,12 @@ void change_state(char new_state)
         DEBUG_END("MONITOR");
         sampling_enter();
         current_state_func = sampling;
+        break;
+    case STATE_RAW:
+        DEBUG_INIT();
+        DEBUG_END("RAW");
+        raw_enter();
+        current_state_func = raw;
         break;
     default:
         return;

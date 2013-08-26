@@ -23,9 +23,10 @@ import argparse
 import powermeter
 
 MODE_OPTIONS = powermeter.MODE_OPTIONS.keys()
-BAUD_OPTIONS = ["300", "600", "1200", "2400", "4800", "9600",
+BAUD_OPTIONS = ("300", "600", "1200", "2400", "4800", "9600",
                 "14400", "19200", "28800", "38400", "57600",
-                "115200"]
+                "115200")
+CALIBRATE_OPTIONS = ("phase", "offset", "gain")
 CALIBRATION_FILE = "calibration"
 
 parser      = argparse.ArgumentParser()
@@ -44,7 +45,7 @@ snapshot.add_argument("-w", dest="number_waves", type=int,
 snapshot.add_argument("-c", dest="number_cycles",type=int,
                         required=True)
 snapshot.add_argument("-b", dest="baud", choices=BAUD_OPTIONS,
-                        default="9600", help="baud rate")
+                        default="115200", help="baud rate")
 snapshot.add_argument("calibration", nargs='?',
                         default=CALIBRATION_FILE,
                         help="calibration file")
@@ -57,21 +58,29 @@ monitor.add_argument("-f", "--fake", dest="fake",
 monitor.add_argument("-w", dest="number_waves", type=int,
                         required=True)
 monitor.add_argument("-b", dest="baud", choices=BAUD_OPTIONS,
-                        default="9600", help="baud rate")
+                        default="115200", help="baud rate")
 monitor.add_argument("calibration", nargs='?',
                         default=CALIBRATION_FILE,
                         help="calibration file")
 
 # calibrate
 calibrate.set_defaults(action="calibrate")
+calibrate.add_argument("-f", "--fake", dest="fake",
+                        action="store_true")
+calibrate.add_argument("mode", choices=CALIBRATE_OPTIONS)
+calibrate.add_argument("file", default=CALIBRATION_FILE,
+                        help="calibration file")
+calibrate.add_argument("-b", dest="baud", choices=BAUD_OPTIONS,
+                        default="115200", help="baud rate")
 
 args = parser.parse_args()
 
-if args.number_waves <= 0:
-    parser.error("NUMBER_WAVES must be a positive value")
+if args.action != "calibrate":
+    if args.number_waves <= 0:
+        parser.error("NUMBER_WAVES must be a positive value")
 
-if hasattr(args, "number_cycles") and args.number_cycles <= 0:
-    parser.error("NUMBER_CYCLES must be a positive value")
+    if hasattr(args, "number_cycles") and args.number_cycles <= 0:
+        parser.error("NUMBER_CYCLES must be a positive value")
 
 status = powermeter.run(**args.__dict__)
 sys.exit(status)

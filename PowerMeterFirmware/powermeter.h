@@ -20,15 +20,22 @@
 #define CURRENT_PIN A1
 #endif
 
-#define INSTANTANEOUS_MODE 0x01
-#define AGREGATE_MODE      0x02
+#define INSTANTANEOUS_MODE 0x00
+#define AGREGATE_MODE      0x01
 
 struct PowerMeter {
     uint8_t action;
+
     uint8_t fake;
     uint8_t mode;
+
     uint16_t num_waves;
     uint16_t num_cycles;
+    uint16_t num_samples;
+
+    float phasecal;
+    float voltage_offset;
+    float current_offset;
 };
 
 typedef void (*sample_function) (void);
@@ -62,11 +69,12 @@ extern float sum_real_power;
 extern float_t real_power;
 
 void update_sample_function(void);
-void reset_powermeter(void);
+void reset_powermeter(uint8_t);
 void setup_powermeter(void);
 
 #define NEW_WAVE_STARTING()                                 \
-    (last_voltage <= 0 && voltage.number >= 0)
+    (last_voltage <= powermeter.voltage_offset              \
+        && voltage.number >= powermeter.voltage_offset)     \
 
 #define RESET_ACCUMULATORS()                                \
     do {                                                    \

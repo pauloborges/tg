@@ -9,6 +9,7 @@
 #define STATE_STOPPED       4
 #define STATE_SNAPSHOT      5
 #define STATE_MONITOR       6
+#define STATE_RAW           7
 
 typedef void (*current_state_func_t) (void);
 
