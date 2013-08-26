@@ -10,17 +10,15 @@ class ArduinoError(IOError):
 
 
 class Arduino(object):
-    def __init__(self, timeout, debug=True):
+    def __init__(self, messages, debug=True):
         self.serial = None
-
-        self.timeout = timeout
         self.debug = debug
+        self.messages = messages
 
     def start(self, device=None, baud="115200"):
         """
         Inicializa uma comunicação serial com o Arduino.
         """
-
         if self.serial is not None:
             raise ArduinoError(u"Serial communication already "
                                 "established")
@@ -34,8 +32,7 @@ class Arduino(object):
         if self.debug:
             print "Serial communication to '%s' with %s bps" % (
                 device, baud)
-        # self.serial = pyserial.Serial(device, baud,
-        #             timeout=self.timeout, writeTimeout=self.timeout)
+
         self.serial = pyserial.Serial(device, baud)
 
 
@@ -49,34 +46,37 @@ class Arduino(object):
 
 
     def send_message(self, message):
-        try:
-            l = self.serial.write(message + '\n')
-        except pyserial.SerialTimeoutException:
-            raise ArduinoError("")
+        l = self.serial.write(message)
 
-        if l < len(message) + 1:
+        if l < len(message):
             if self.debug:
                 print "<<< %s...%s [broken message]" % (
-                                        message[:l], message[l+1:])
+                    prettify(message[:l]), prettify(message[l+1:]))
             raise ArduinoError("")
 
         if self.debug:
-            print "<<< %s" % message
+            print "<<< %s" % prettify(message)
 
 
     def read_message(self):
-        message = self.serial.readline()
+        message = self.serial.read()
+        opcode = ord(message)
 
-        if message[-1] != '\n':
-            if self.debug:
-                print ">>> %s [broken message]" % message
-            raise ArduinoError("")
-
-        message = message[:-1]
-        if self.debug:
-            print ">>> %s" % message
-
-        if message.startswith("DEBUG"):
+        if opcode not in self.messages and message != 'D':
+            raise ArduinoError("Unexpected: %s" % hex(opcode))
+        elif message == 'D':
+            message += self.serial.readline()
+            print ">>> %s" % message,
             return self.read_message()
-        else:
-            return message
+        
+        if self.messages[opcode] > 0:
+            message += self.serial.read(self.messages[opcode])
+
+        if self.debug:
+            print ">>> %s" % prettify(message)
+
+        return message
+
+
+def prettify(message):
+    return ' '.join(hex(ord(c)) for c in message)

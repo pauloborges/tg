@@ -6,30 +6,32 @@ from collections import deque
 import powermeter.qt as qt
 import traceback
 import functools
+import struct
+import time
 import math
 import sys
 
-REQUEST_STOP          = 'S'
-REQUEST_SNAPSHOT      = 'P'
-REQUEST_MONITOR       = 'M'
-RESPONSE_OK           = 'O'
-RESPONSE_NO           = 'N'
-RESPONSE_INST_SAMPLE  = 'I'
-RESPONSE_AGREG_SAMPLE = 'A'
+REQUEST_STOP     = 0x01
+REQUEST_SNAPSHOT = 0x02
+REQUEST_MONITOR  = 0x03
+RESPONSE_OK      = 0x51
+RESPONSE_NO      = 0x52
+RESPONSE_INST    = 0x53
+RESPONSE_AGREG   = 0x54
 
 MODE_INST  = "inst"
 MODE_AGREG = "agreg"
 
 MODE_OPTIONS = {
-    MODE_INST:  'I',
-    MODE_AGREG: 'A',
+    MODE_INST:  0x01,
+    MODE_AGREG: 0x02,
 }
 
-STATUS_INIT                    = 0
-STATUS_STOPPED                 = 2
-STATUS_WAIT_SAMPLE_RESP        = 3
-STATUS_SAMPLING                = 4
-STATUS_END                     = 6
+STATUS_INIT             = 0
+STATUS_STOPPED          = 2
+STATUS_WAIT_SAMPLE_RESP = 3
+STATUS_SAMPLING         = 4
+STATUS_END              = 6
 
 lazy = functools.partial(lazyfunc, sys.modules[__name__])
 
@@ -43,14 +45,17 @@ status_functions = {
 
 WIN_SIZE = (1000, 600)
 
-TIMEOUT         = 200 # msec
-arduino = Arduino(TIMEOUT)
+arduino = Arduino(messages={
+    RESPONSE_OK: 0,
+    RESPONSE_NO: 0,
+    RESPONSE_INST: 12,
+    RESPONSE_AGREG: 12,
+})
 
 current_status  = None
 DATA_SIZE_LEN   = 100 # samples
 
 config = Bundle()
-
 
 def run(**kwargs):
     app, win = qt.init(WIN_SIZE)
@@ -103,16 +108,19 @@ def stopped_func():
         mode = config.mode
         waves = config.number_waves
         cycles = config.number_cycles
-        arduino.send_message(
-                enc_snapshot_request(fake, mode, waves, cycles))
+        arduino.send_message(enc_snapshot_request(MODE_OPTIONS[mode],
+                                                waves, cycles, fake))
     elif action == "monitor":
         fake = config.fake
         mode = config.mode
         waves = config.number_waves
-        arduino.send_message(
-                enc_monitor_request(fake, mode, waves))
+        arduino.send_message(enc_monitor_request(MODE_OPTIONS[mode],
+                                                waves, fake))
     else:
         raise ValueError("Invalid action '%s'" % action)
+
+    if config.mode == MODE_AGREG and not hasattr(config, "base"):
+        config.base = time.time()
 
     update_status(STATUS_WAIT_SAMPLE_RESP)
 
@@ -144,11 +152,12 @@ def sampling_func():
 
     mode = config.mode
 
-    if opcode == RESPONSE_INST_SAMPLE and mode == MODE_INST:
+    if opcode == RESPONSE_INST and mode == MODE_INST:
         update_inst(data)
-    elif opcode == RESPONSE_AGREG_SAMPLE and mode == MODE_AGREG:
+    elif opcode == RESPONSE_AGREG and mode == MODE_AGREG:
         update_agreg(data)
     else:
+        print RESPONSE_OK, RESPONSE_AGREG, opcode, type(opcode)
         raise ArduinoError("Expecting OK, INST_SAMPLE, AGREG_SAMPLE "
             "got %s" % opcode)
 
@@ -158,9 +167,8 @@ def end_func():
     pass
 
 
-def build_plot(win, title, unit, y_range=None, x_range=None,
-                                                        colspan=1):
-    plot = win.addPlot(colspan=colspan, title=title)
+def build_plot(win, title, unit, y_range=None, x_range=None, col=1):
+    plot = win.addPlot(colspan=col, title=title)
     plot.setLabel("left", units=unit)
     plot.setLabel("bottom", units="s")
     plot.hideButtons()
@@ -289,7 +297,7 @@ def update_inst(data):
     real_power = config.real_power
 
     elapsed = config.elapsed
-    elapsed.append(data.elapsed / 1000)
+    elapsed.append(data.elapsed)
 
     voltage.data.append(data.voltage)
     current.data.append(data.current)
@@ -309,7 +317,7 @@ def update_agreg(data):
     total_power  = config.total_power
 
     elapsed = config.elapsed
-    elapsed.append(data.elapsed / 1000)
+    elapsed.append(data.elapsed)
 
     total_power_value = data.rms_voltage * data.rms_current
 
@@ -344,72 +352,82 @@ def update_status(status):
 
 
 def enc_stop_request():
-    return "S"
+    return struct.pack("<B", REQUEST_STOP)
 
 
-def enc_snapshot_request(fake, mode, waves, cycles):
-    message = REQUEST_SNAPSHOT
-    message += '1' if fake else '0'
-    message += MODE_OPTIONS[mode]
-    message += "%03d" % waves
-    message += "%03d" % cycles
-    return message
+def enc_snapshot_request(mode, waves, cycles, fake):
+    return struct.pack("<BBHH?", REQUEST_SNAPSHOT,
+                        mode, waves, cycles, fake)
 
 
-def enc_monitor_request(fake, mode, waves):
-    message = REQUEST_MONITOR
-    message += '1' if fake else '0'
-    message += MODE_OPTIONS[mode]
-    message += "%03d" % waves
-    return message
+def enc_monitor_request(mode, waves, fake):
+    return struct.pack("<BBH?", REQUEST_MONITOR,
+                        mode, waves, fake)
 
 
 def dec_message(message):
-    opcode = message[0]
+    opcode = ord(message[0])
 
     if opcode in (RESPONSE_OK, RESPONSE_NO):
         return opcode, None
-    elif opcode == RESPONSE_INST_SAMPLE:
-        data = dec_inst_sample_response()
-    elif opcode == RESPONSE_AGREG_SAMPLE:
-        data = dec_agreg_sample_response()
-    else:
-        raise ArduinoError("Invalid message opcode: %s" % opcode)
+    elif opcode == RESPONSE_INST:
+        data = dec_inst_sample_response(message[1:])
+    elif opcode == RESPONSE_AGREG:
+        data = dec_agreg_sample_response(message[1:])
 
     return opcode, data
 
 
-def dec_inst_sample_response():
-    data = Bundle()
+def dec_inst_sample_response(message):
+    d = Bundle()
 
-    message = arduino.read_message()
-    data.elapsed = float(message)
+    d.elapsed, d.voltage, d.current = struct.unpack("<fff", message)
 
-    message = arduino.read_message()
-    data.voltage = float(message)
-
-    message = arduino.read_message()
-    data.current = float(message)
-
-    return data
+    return d
 
 
-def dec_agreg_sample_response():
-    data = Bundle()
+def dec_agreg_sample_response(message):
+    d = Bundle()
 
-    message = arduino.read_message()
-    data.elapsed = float(message)
+    d.rms_voltage, d.rms_current, d.real_power = struct.unpack(
+        "<fff", message)
 
-    message = arduino.read_message()
-    data.rms_voltage = float(message)
+    d.elapsed = time.time() - config.base
 
-    message = arduino.read_message()
-    data.rms_current = float(message)
+    return d
 
-    message = arduino.read_message()
-    data.real_power = float(message)
 
-    return data
+# def dec_inst_sample_response():
+#     data = Bundle()
+
+#     message = arduino.read_message()
+#     data.elapsed = float(message)
+
+#     message = arduino.read_message()
+#     data.voltage = float(message)
+
+#     message = arduino.read_message()
+#     data.current = float(message)
+
+#     return data
+
+
+# def dec_agreg_sample_response():
+#     data = Bundle()
+
+#     message = arduino.read_message()
+#     data.elapsed = float(message)
+
+#     message = arduino.read_message()
+#     data.rms_voltage = float(message)
+
+#     message = arduino.read_message()
+#     data.rms_current = float(message)
+
+#     message = arduino.read_message()
+#     data.real_power = float(message)
+
+#     return data
 
 ## One line option
 # def dec_message(message):
@@ -417,34 +435,11 @@ def dec_agreg_sample_response():
 
 #     if opcode in (RESPONSE_OK, RESPONSE_NO):
 #         return opcode, None
-#     elif opcode == RESPONSE_INST_SAMPLE:
+#     elif opcode == RESPONSE_INST:
 #         data = dec_inst_sample_response(message)
-#     elif opcode == RESPONSE_AGREG_SAMPLE:
+#     elif opcode == RESPONSE_AGREG:
 #         data = dec_agreg_sample_response(message)
 #     else:
 #         raise ArduinoError("Invalid message opcode: %s" % opcode)
 
 #     return opcode, data
-
-
-# def dec_inst_sample_response(message):
-#     data = Bundle()
-
-#     data.elapsed, data.voltage, data.current = (
-#         float(value) for value in message.split('#')
-#     )
-
-#     return data
-
-
-# def dec_agreg_sample_response(message):
-#     data = Bundle()
-
-#     tmp = (float(value) for value in message.split('#'))
-
-#     data.elapsed = tmp[0]
-#     data.rms_voltage = tmp[1]
-#     data.rms_current = tmp[2]
-#     data.real_power = tmp[3]
-
-#     return data

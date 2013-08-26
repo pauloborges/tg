@@ -10,7 +10,7 @@
 #define PHASE_ZERO      0
 #define OFFSET_HALF_ADC (ADC_MAX_VALUE / 2)
 
-struct PowerMeter powermeter = {1, 'I', 60, 50};
+struct PowerMeter powermeter;
 
 sample_function sample;
 
@@ -23,20 +23,20 @@ int last_raw_current;
 float fixed_voltage;
 float last_fixed_voltage;
 
-float voltage;
+float_t voltage;
 float last_voltage;
 
-float current;
+float_t current;
 float last_current;
 
 float sum_rms_voltage;
-float rms_voltage;
+float_t rms_voltage;
 
 float sum_rms_current;
-float rms_current;
+float_t rms_current;
 
 float sum_real_power;
-float real_power;
+float_t real_power;
 
 static float voltage_freq  = FREQ_60HZ;
 static float voltage_phase = PHASE_ZERO;
@@ -53,11 +53,11 @@ static int current_offset  = OFFSET_HALF_ADC;
 
 #define FAKE_VOLTAGE_SAMPLE()                               \
     FAKE_SAMPLE(voltage_freq, voltage_phase, voltage_ampl,  \
-        voltage_offset, ELAPSED_TIME())
+        voltage_offset, ELAPSED_TIME().number)
 
 #define FAKE_CURRENT_SAMPLE()                               \
     FAKE_SAMPLE(current_freq, current_phase, current_ampl,  \
-        current_offset, ELAPSED_TIME())
+        current_offset, ELAPSED_TIME().number)
 
 #define REAL_VOLTAGE_SAMPLE() analogRead(VOLTAGE_PIN)
 #define REAL_CURRENT_SAMPLE() analogRead(CURRENT_PIN)
@@ -77,17 +77,17 @@ static void fake_sample(void)
     last_fixed_voltage = fixed_voltage;
     fixed_voltage = raw_voltage;
 
-    last_voltage = voltage;
-    last_current = current;
+    last_voltage = voltage.number;
+    last_current = current.number;
 
     // FIXME HFP
-    voltage = fixed_voltage - OFFSET_HALF_ADC;
-    current = raw_current - OFFSET_HALF_ADC;
+    voltage.number = fixed_voltage - OFFSET_HALF_ADC;
+    current.number = raw_current - OFFSET_HALF_ADC;
 
-    sum_rms_voltage += voltage * voltage;
-    sum_rms_current += current * current;
+    sum_rms_voltage += voltage.number * voltage.number;
+    sum_rms_current += current.number * current.number;
 
-    sum_real_power += voltage * current;
+    sum_real_power += voltage.number * current.number;
 }
 
 static void real_sample(void)
@@ -105,17 +105,17 @@ static void real_sample(void)
     last_fixed_voltage = fixed_voltage;
     fixed_voltage = raw_voltage;
 
-    last_voltage = voltage;
-    last_current = current;
+    last_voltage = voltage.number;
+    last_current = current.number;
 
     // FIXME HFP
-    voltage = fixed_voltage - OFFSET_HALF_ADC;
-    current = raw_current - OFFSET_HALF_ADC;
+    voltage.number = fixed_voltage - OFFSET_HALF_ADC;
+    current.number = raw_current - OFFSET_HALF_ADC;
 
-    sum_rms_voltage += voltage * voltage;
-    sum_rms_current += current * current;
+    sum_rms_voltage += voltage.number * voltage.number;
+    sum_rms_current += current.number * current.number;
 
-    sum_real_power += voltage * current;
+    sum_real_power += voltage.number * current.number;
 }
 
 void update_sample_function(void)

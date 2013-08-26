@@ -3,11 +3,11 @@
 #include "firmware.h"
 #include "protocol.h"
 
+uint8_t buffer[CONF_BUFFER_LEN];
+
 #define IS_BINARY(number) (0 <= number && number <= 1)
 #define IS_MODE(c)                                          \
     (c == INSTANTANEOUS_MODE || c == AGREGATE_MODE)
-
-char message_buffer[CONF_BUFFER_LEN];
 
 void setup_protocol(void)
 {
@@ -17,26 +17,23 @@ void setup_protocol(void)
     SERIAL.setTimeout(CONF_SERIAL_TIMEOUT);
 }
 
-static int parse_int(char *buf, size_t len)
-{
-    int result = 0;
-    int tmp;
+// static int parse_int(char *buf, size_t len)
+// {
+//     int result = 0;
+//     int tmp;
 
-    for (size_t i = 0; i < len; i++) {
-        tmp = buf[i];
-        if (tmp == '\0')
-            return -1;
-        result = result * 10 + (tmp - '0'); 
-    }
+//     for (size_t i = 0; i < len; i++) {
+//         tmp = buf[i];
+//         if (tmp == '\0')
+//             return -1;
+//         result = result * 10 + (tmp - '0'); 
+//     }
 
-    return result;
-}
+//     return result;
+// }
 
-void send_simple_response(char opcode) {
-    if (opcode == RES_OK)
-        SERIAL.println("OK");
-    else if (opcode == RES_NO)
-        SERIAL.println("NO");
+void send_simple_response(uint8_t opcode) {
+    SERIAL.write(opcode);
 }
 
 static void handle_req_stop_message(void)
@@ -47,10 +44,10 @@ static void handle_req_stop_message(void)
 
 static void handle_req_snapshot_message(void)
 {
-    int fake;
-    char mode;
-    int waves;
-    int cycles;
+    uint8_t fake;
+    uint8_t mode;
+    uint16_t waves;
+    uint16_t cycles;
 
     if (current_state != STATE_STOPPED) {
         DEBUG_INIT();
@@ -60,13 +57,15 @@ static void handle_req_snapshot_message(void)
     }
 
     // Message format:
-    // 'P' Fake Mode NumWaves NumCycles
-    //  1   1    1      3         3
+    // OPCODE MODE NUM_WAVES NUM_CYCLES FAKE
+    //   1     1       2         2       1
 
-    fake = parse_int(message_buffer + 1, 1);
-    mode = message_buffer[2];
-    waves = parse_int(message_buffer + 3, 3);
-    cycles = parse_int(message_buffer + 6, 3);
+    mode = SERIAL.read();
+    waves = SERIAL.read();
+    waves |= SERIAL.read() << 8;
+    cycles = SERIAL.read();
+    cycles |= SERIAL.read() << 8;
+    fake = SERIAL.read();
 
     if (!IS_BINARY(fake)) {
         DEBUG_INIT();
@@ -102,6 +101,7 @@ static void handle_req_snapshot_message(void)
     DEBUG_INIT(); DEBUG("num waves: "); DEBUG_END(waves);
     DEBUG_INIT(); DEBUG("num cycles: "); DEBUG_END(cycles);
 
+    powermeter.action = STATE_SNAPSHOT;
     powermeter.fake = fake;
     powermeter.mode = mode;
     powermeter.num_waves = waves;
@@ -129,12 +129,13 @@ static void handle_req_monitor_message(void)
     }
 
     // Message format:
-    // 'M' Fake Mode NumWaves
-    //  1   1    1      3
+    // OPCODE MODE NUM_WAVES FAKE
+    //   1     1       2      1
 
-    fake = parse_int(message_buffer + 1, 1);
-    mode = message_buffer[2];
-    waves = parse_int(message_buffer + 3, 3);
+    mode = SERIAL.read();
+    waves = SERIAL.read();
+    waves |= SERIAL.read() << 8;
+    fake = SERIAL.read();
 
     if (!IS_BINARY(fake)) {
         DEBUG_INIT();
@@ -162,6 +163,12 @@ static void handle_req_monitor_message(void)
     DEBUG_INIT(); DEBUG("mode: "); DEBUG_END(mode);
     DEBUG_INIT(); DEBUG("num waves: "); DEBUG_END(waves);
 
+    powermeter.action = STATE_MONITOR;
+    powermeter.fake = fake;
+    powermeter.mode = mode;
+    powermeter.num_waves = waves;
+    powermeter.num_cycles = 1;
+
     change_state(STATE_MONITOR);
     send_simple_response(RES_OK);
     return;
@@ -170,14 +177,9 @@ error:
     send_simple_response(RES_NO);
 }
 
-static void handle_message(void)
+static void handle_message(uint8_t opcode)
 {
-    DEBUG_INIT();
-    DEBUG("incoming message '");
-    DEBUG(message_buffer);
-    DEBUG_END("'");
-
-    switch(message_buffer[0]) {
+    switch(opcode) {
     case REQ_STOP:
         handle_req_stop_message();
         break;
@@ -190,34 +192,23 @@ static void handle_message(void)
     }
 }
 
-static char is_valid_opcode(char opcode)
+static char is_valid_opcode(uint8_t opcode)
 {
-    return opcode == REQ_BAUD ||
-           opcode == REQ_INIT ||
-           opcode == REQ_STOP ||
+    return opcode == REQ_STOP ||
            opcode == REQ_SNAPSHOT ||
            opcode == REQ_MONITOR;
 }
 
 void handle_incoming_data(void)
 {
-    int len = SERIAL.readBytesUntil(CONF_MESSAGE_END,
-                            message_buffer, CONF_BUFFER_LEN);
+    uint8_t opcode = SERIAL.read();
 
-    if (!len) {
-        DEBUG_INIT();
-        DEBUG("broken message with size ");
-        DEBUG_END(len);
-        return;
-    }
-
-    if (!is_valid_opcode(message_buffer[0])) {
+    if (!is_valid_opcode(opcode)) {
         DEBUG_INIT();
         DEBUG("invalid opcode ");
-        DEBUG_END(message_buffer[0]);
+        DEBUG_END(opcode);
         return;
     }
 
-    message_buffer[len] = '\0';
-    handle_message();
+    handle_message(opcode);
 }

@@ -5,7 +5,7 @@
 #include "powermeter.h"
 
 #ifndef CONF_START_SERIAL_BAUD
-#define CONF_START_SERIAL_BAUD 9600
+#define CONF_START_SERIAL_BAUD 115200
 #endif
 
 #ifndef CONF_SERIAL_TIMEOUT
@@ -21,21 +21,19 @@
 #endif
 
 /* Message opcodes */
-#define REQ_BAUD     'B'
-#define REQ_INIT     'T'
-#define REQ_STOP     'S'
-#define REQ_SNAPSHOT 'P'
-#define REQ_MONITOR  'M'
-#define RES_OK       'O'
-#define RES_NO       'N'
-#define RES_INST_EV  INSTANTANEOUS_MODE
-#define RES_AGRE_EV  AGREGATE_MODE
-
-extern char message_buffer[CONF_BUFFER_LEN];
+#define REQ_STOP     0x01
+#define REQ_SNAPSHOT 0x02
+#define REQ_MONITOR  0x03
+#define RES_OK       0x51
+#define RES_NO       0x52
+#define RES_INST     0x53
+#define RES_AGREG    0x54
 
 void setup_protocol(void);
-void send_simple_response(char opcode);
+void send_simple_response(uint8_t opcode);
 void handle_incoming_data(void);
+
+extern uint8_t buffer[CONF_BUFFER_LEN];
 
 #if CONF_ARDUINO_PLATFORM == ARM
 #ifdef CONF_ARM_USB_ENABLED
@@ -49,19 +47,18 @@ void handle_incoming_data(void);
 
 #define SEND_INSTANTANEOUS_EVENT(elapsed, voltage, current)  \
     do {                                                     \
-        SERIAL.println(RES_INST_EV);                         \
-        SERIAL.println(1000 * elapsed);                      \
-        SERIAL.println(voltage);                             \
-        SERIAL.println(current);                             \
+        SERIAL.write(RES_INST);                              \
+        SERIAL.write(elapsed, 4);                            \
+        SERIAL.write(voltage, 4);                            \
+        SERIAL.write(current, 4);                            \
     } while (0)
 
-#define SEND_AGREGATED_EVENT(elapsed, vrms, irms, rpower)    \
+#define SEND_AGREGATED_EVENT(vrms, irms, rpower)             \
     do {                                                     \
-        SERIAL.println(RES_AGRE_EV);                         \
-        SERIAL.println(1000 * elapsed);                      \
-        SERIAL.println(vrms);                                \
-        SERIAL.println(irms);                                \
-        SERIAL.println(rpower);                              \
+        SERIAL.write(RES_AGREG);                             \
+        SERIAL.write(vrms, 4);                               \
+        SERIAL.write(irms, 4);                               \
+        SERIAL.write(rpower, 4);                             \
     } while (0)
 
 #endif

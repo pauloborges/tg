@@ -2,6 +2,7 @@
 #define POWERMETER_H
 
 #include "config.h"
+#include "util.h"
 
 #if CONF_ARDUINO_PLATFORM == ARM
 #define ADC_MAX_VALUE 4095
@@ -19,14 +20,15 @@
 #define CURRENT_PIN A1
 #endif
 
-#define INSTANTANEOUS_MODE 'I'
-#define AGREGATE_MODE 'A'
+#define INSTANTANEOUS_MODE 0x01
+#define AGREGATE_MODE      0x02
 
 struct PowerMeter {
-    unsigned short int fake;
-    char mode;
-    unsigned short int num_waves;
-    unsigned short int num_cycles;
+    uint8_t action;
+    uint8_t fake;
+    uint8_t mode;
+    uint16_t num_waves;
+    uint16_t num_cycles;
 };
 
 typedef void (*sample_function) (void);
@@ -44,27 +46,27 @@ extern int last_raw_current;
 extern float fixed_voltage;
 extern float last_fixed_voltage;
 
-extern float voltage;
+extern float_t voltage;
 extern float last_voltage;
 
-extern float current;
+extern float_t current;
 extern float last_current;
 
 extern float sum_rms_voltage;
-extern float rms_voltage;
+extern float_t rms_voltage;
 
 extern float sum_rms_current;
-extern float rms_current;
+extern float_t rms_current;
 
 extern float sum_real_power;
-extern float real_power;
+extern float_t real_power;
 
 void update_sample_function(void);
 void reset_powermeter(void);
 void setup_powermeter(void);
 
 #define NEW_WAVE_STARTING()                                 \
-    (last_voltage <= 0 && voltage >= 0)
+    (last_voltage <= 0 && voltage.number >= 0)
 
 #define RESET_ACCUMULATORS()                                \
     do {                                                    \

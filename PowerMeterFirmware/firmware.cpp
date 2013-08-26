@@ -40,7 +40,7 @@ static void stopped_exit(void)
 
 // ----------------------------------------------------------
 
-static void snapshot(void)
+static void sampling(void)
 {
     char inst_mode = powermeter.mode == INSTANTANEOUS_MODE;
     num_waves_remaining = powermeter.num_waves;
@@ -55,8 +55,8 @@ static void snapshot(void)
         sample();
 
         if (inst_mode)
-            SEND_INSTANTANEOUS_EVENT(ELAPSED_TIME(),
-                                        voltage, current);
+            SEND_INSTANTANEOUS_EVENT(ELAPSED_TIME().bytes,
+                                    voltage.bytes, current.bytes);
 
         if (NEW_WAVE_STARTING()) {
             num_waves_remaining--;
@@ -64,24 +64,25 @@ static void snapshot(void)
     }
 
     if (!inst_mode) {
-        rms_voltage = sqrt(sum_rms_voltage / num_samples);
-        rms_current = sqrt(sum_rms_current / num_samples);
-        real_power = sum_real_power / num_samples;
+        rms_voltage.number = sqrt(sum_rms_voltage / num_samples);
+        rms_current.number = sqrt(sum_rms_current / num_samples);
+        real_power.number = sum_real_power / num_samples;
 
-        SEND_AGREGATED_EVENT(ELAPSED_TIME(),
-                    rms_voltage, rms_current, real_power);
+        SEND_AGREGATED_EVENT(rms_voltage.bytes, rms_current.bytes,
+                                real_power.bytes);
 
         // DEBUG_INIT(); DEBUG_END(num_samples);
     }
 
     num_cycles_remaining--;
-    if (!num_cycles_remaining) {
+    if (powermeter.action == STATE_SNAPSHOT
+                                        && !num_cycles_remaining) {
         send_simple_response(RES_OK);
         change_state(STATE_STOPPED);
     }
 }
 
-static void snapshot_enter(void)
+static void sampling_enter(void)
 {
     num_cycles_remaining = powermeter.num_cycles;
     
@@ -89,26 +90,7 @@ static void snapshot_enter(void)
     reset_powermeter();
 }
 
-static void snapshot_exit(void)
-{
-}
-
-// ----------------------------------------------------------
-
-static void monitor(void)
-{
-    // TODO
-}
-
-static void monitor_enter(void)
-{
-    num_cycles_remaining = powermeter.num_cycles;
-
-    update_sample_function();
-    reset_powermeter();
-}
-
-static void monitor_exit(void)
+static void sampling_exit(void)
 {
 }
 
@@ -121,10 +103,10 @@ void change_state(char new_state)
         stopped_exit();
         break;
     case STATE_SNAPSHOT:
-        snapshot_exit();
+        sampling_exit();
         break;
     case STATE_MONITOR:
-        monitor_exit();
+        sampling_exit();
         break;
     }
 
@@ -138,14 +120,14 @@ void change_state(char new_state)
     case STATE_SNAPSHOT:
         DEBUG_INIT();
         DEBUG_END("SNAPSHOT");
-        snapshot_enter();
-        current_state_func = snapshot;
+        sampling_enter();
+        current_state_func = sampling;
         break;
     case STATE_MONITOR:
         DEBUG_INIT();
         DEBUG_END("MONITOR");
-        monitor_enter();
-        current_state_func = monitor;
+        sampling_enter();
+        current_state_func = sampling;
         break;
     default:
         return;
