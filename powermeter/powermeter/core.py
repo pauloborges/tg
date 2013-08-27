@@ -1,15 +1,23 @@
 #!/usr/bin/env python
 # coding: utf-8
 
-from .cli import parse_args
+import sys
+
+from powermeter.cli import parse_args
+from powermeter.host import PowerMeter
+
+
+def initialize(kwargs):
+    return PowerMeter.initialize(**kwargs)
 
 
 def main():
     "Main entrypoint for powermeter utility."
-    
-    args = parse_args()
-    print args
+    kwargs     = parse_args()
+    powermeter = initialize(kwargs)
+
+    return powermeter.run()
 
 
 if __name__ == "__main__":
-    main()
+    sys.exit(main())

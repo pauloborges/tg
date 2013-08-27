@@ -22,93 +22,61 @@ def add_argument_fake(parser):
         help="use fake samples"
     )
 
-def add_argument_number_of_waves(parser):
+def add_argument_calibration_file(parser, flag, name, mode):
     parser.add_argument(
-        '-w', "--number-waves",
-        dest="number_of_waves",
-        metavar="number_of_waves",
-        type=int,
-        required=True
+        flag, name,
+        dest="calibration_fd",
+        metavar="calibration_file",
+        type=argparse.FileType(mode),
+        default=DEFAULT_CALIBRATION_FILE
     )
 
 ###########################################################
 # Monitor parser
 ###########################################################
 
-MONITOR         = "monitor"
-RAW             = "raw"
-INSTANTANEOUS   = "instantaneous"
-AGREGATE        = "agregate"
+MONITOR = "monitor"
+MONITOR_OPTION_CHOICES = ("raw", "instantaneous", "agregate")
 
 monitor = parsers.add_parser(MONITOR, help="real time monitoring "
                                     "of energy-related features")
 monitor.set_defaults(command=MONITOR)
-monitor_parsers = monitor.add_subparsers()
 
 # ---------------------------------------------------------
 
-raw = monitor_parsers.add_parser(RAW)
-raw.set_defaults(option=RAW)
-
-raw.add_argument(
-    '-s', "--samples",
-    dest="number_of_samples",
-    metavar="number_of_samples",
-    type=int,
-    required=True,
+monitor.add_argument(
+    "option",
+    choices=MONITOR_OPTION_CHOICES
 )
 
-add_argument_fake(raw)
-
-# ---------------------------------------------------------
-
-instantaneous = monitor_parsers.add_parser(INSTANTANEOUS)
-instantaneous.set_defaults(option=INSTANTANEOUS)
-
-add_argument_number_of_waves(instantaneous)
-add_argument_fake(instantaneous)
-
-# ---------------------------------------------------------
-
-agregate = monitor_parsers.add_parser(AGREGATE)
-agregate.set_defaults(option=AGREGATE)
-
-agregate.add_argument(
-    '-c', "--number-cycles",
-    dest="number_of_cycles",
-    metavar="number_of_cycles",
+monitor.add_argument(
+    "quantity",
     type=int,
-    required=True
+    help="number of waves (instantaneous or agregate option) "
+            "or number of samples (raw option)"
 )
 
-add_argument_number_of_waves(agregate)
-add_argument_fake(agregate)
+add_argument_fake(monitor)
+add_argument_calibration_file(monitor, '-c', "--calibration", 'r')
 
 ###########################################################
 # Calibrate parser
 ###########################################################
 
-CALIBRATE   = "calibrate"
+CALIBRATE = "calibrate"
 CALIBRATE_OPTION_CHOICES = ("offset", "gain", "phase")
 
 calibrate = parsers.add_parser(CALIBRATE, help="calibrate "
                     "powermeter to accurately measure features")
 calibrate.set_defaults(command=CALIBRATE)
 
-calibrate_parsers = calibrate.add_argument(
+calibrate.add_argument(
     "option",
     choices=CALIBRATE_OPTION_CHOICES
 )
 
-calibrate.add_argument(
-    '-o', "--output",
-    dest="calibration_fd",
-    metavar="calibration_file",
-    type=argparse.FileType('w'),
-    default=DEFAULT_CALIBRATION_FILE
-)
-
 add_argument_fake(calibrate)
+add_argument_calibration_file(calibrate, '-o', "--output", 'w')
 
 ###########################################################
 # Disagregate parser
@@ -122,5 +90,4 @@ add_argument_fake(calibrate)
 
 def parse_args():
     args = parser.parse_args()
-
-    return args
+    return args.__dict__

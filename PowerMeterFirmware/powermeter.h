@@ -4,45 +4,25 @@
 #include "config.h"
 #include "util.h"
 
-#if CONF_ARDUINO_PLATFORM == ARM
-#define ADC_MAX_VALUE 4095
-#else
-#define ADC_MAX_VALUE 1023
-#define cbi(sfr, bit) (_SFR_BYTE(sfr) &= ~_BV(bit))
-#define sbi(sfr, bit) (_SFR_BYTE(sfr) |= _BV(bit))
-#endif
+// --------------------------------------------------------
+// Configuration variables
 
-#ifndef VOLTAGE_PIN
-#define VOLTAGE_PIN A0
-#endif
+extern uint8_t MODE;       // MODE_RAW, MODE_INST or MODE_AGRE
+extern uint8_t FAKE;       // boolean
+extern uint16_t QUANTITY;  // waves or samples (MODE)
 
-#ifndef CURRENT_PIN
-#define CURRENT_PIN A1
-#endif
+extern float PHASE_CORRECTION;
+extern float VOLTAGE_OFFSET;
+extern float CURRENT_OFFSET;
 
-#define INSTANTANEOUS_MODE 0x00
-#define AGREGATE_MODE      0x01
-
-struct PowerMeter {
-    uint8_t action;
-
-    uint8_t fake;
-    uint8_t mode;
-
-    uint16_t num_waves;
-    uint16_t num_cycles;
-    uint16_t num_samples;
-
-    float phasecal;
-    float voltage_offset;
-    float current_offset;
-};
+// --------------------------------------------------------
+// Current sampling function
 
 typedef void (*sample_function) (void);
-
-extern struct PowerMeter powermeter;
-
 extern sample_function sample;
+
+// --------------------------------------------------------
+// Sampling-related variables
 
 extern int raw_voltage;
 extern int last_raw_voltage;
@@ -68,13 +48,19 @@ extern float_t rms_current;
 extern float sum_real_power;
 extern float_t real_power;
 
+// --------------------------------------------------------
+// External API
+
+#define DONT_WAIT_NEW_WAVE 0x00
+#define WAIT_NEW_WAVE      0x01
+
 void update_sample_function(void);
 void reset_powermeter(uint8_t);
 void setup_powermeter(void);
 
 #define NEW_WAVE_STARTING()                                 \
-    (last_voltage <= powermeter.voltage_offset              \
-        && voltage.number >= powermeter.voltage_offset)     \
+    (last_voltage <= VOLTAGE_OFFSET                         \
+        && voltage.n >= VOLTAGE_OFFSET)                     \
 
 #define RESET_ACCUMULATORS()                                \
     do {                                                    \

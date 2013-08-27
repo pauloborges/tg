@@ -8,12 +8,9 @@
 
 current_state_func_t current_state_func;
 
-char current_state;
-
-unsigned int num_waves_remaining;
-unsigned int num_cycles_remaining;
-
-unsigned int num_samples;
+uint8_t current_state;
+uint16_t num_samples;
+uint16_t remaining_quantity;
 
 // ----------------------------------------------------------
 
@@ -32,6 +29,10 @@ static void stopped(void)
 
 static void stopped_enter(void)
 {
+    DEBUG_INIT();
+    DEBUG_END("STOPPED");
+
+    current_state_func = stopped;
 }
 
 static void stopped_exit(void)
@@ -40,87 +41,57 @@ static void stopped_exit(void)
 
 // ----------------------------------------------------------
 
-static void sampling(void)
+static void monitor(void)
 {
-    char inst_mode = powermeter.mode == INSTANTANEOUS_MODE;
-    num_waves_remaining = powermeter.num_waves;
-
-    RESET_ACCUMULATORS();
     num_samples = 0;
 
-    while (num_waves_remaining) {
+    RESET_ACCUMULATORS();
+
+    while (remaining_quantity) {
         num_samples++;
 
         REFRESH_ELAPSED_TIME();
         sample();
 
-        if (inst_mode)
-            SEND_INSTANTANEOUS_EVENT(ELAPSED_TIME().bytes,
-                                    voltage.bytes, current.bytes);
+        if (MODE == MODE_INST)
+            SEND_INST_EVENT(ELAPSED_TIME_B(), voltage.b, current.b);
+        else if (MODE == MODE_RAW) {
+            SEND_RAW_EVENT(voltage.b, current.b);
+            remaining_quantity--;
+        }
 
-        if (NEW_WAVE_STARTING()) {
-            num_waves_remaining--;
+        if (MODE != MODE_RAW && NEW_WAVE_STARTING()) {
+            remaining_quantity--;
         }
     }
 
-    if (!inst_mode) {
-        rms_voltage.number = sqrt(sum_rms_voltage / num_samples);
-        rms_current.number = sqrt(sum_rms_current / num_samples);
-        real_power.number = sum_real_power / num_samples;
+    if (MODE == MODE_AGRE) {
+        rms_voltage.n = sqrt(sum_rms_voltage / num_samples);
+        rms_current.n = sqrt(sum_rms_current / num_samples);
+        real_power.n = sum_real_power / num_samples;
 
-        SEND_AGREGATED_EVENT(rms_voltage.bytes, rms_current.bytes,
-                                real_power.bytes);
+        SEND_AGRE_EVENT(rms_voltage.b, rms_current.b, real_power.b);
 
         // DEBUG_INIT(); DEBUG_END(num_samples);
     }
-
-    num_cycles_remaining--;
-    if (powermeter.action == STATE_SNAPSHOT
-                                        && !num_cycles_remaining) {
-        send_simple_response(RES_OK);
-        change_state(STATE_STOPPED);
-    }
 }
 
-static void sampling_enter(void)
+static void monitor_enter(void)
 {
-    num_cycles_remaining = powermeter.num_cycles;
+    DEBUG_INIT();
+    DEBUG_END("MONITOR");
+
+    current_state_func = monitor;
+    remaining_quantity = QUANTITY;
     
     update_sample_function();
-    reset_powermeter(1);
+    reset_powermeter(WAIT_NEW_WAVE);
 }
 
-static void sampling_exit(void)
+static void monitor_exit(void)
 {
 }
 
-// ----------------------------------------------------------
-
-static void raw(void)
-{
-    RESET_ACCUMULATORS();
-
-    for (uint16_t i = powermeter.num_samples; i; i--) {
-        REFRESH_ELAPSED_TIME();
-        sample();
-
-        SEND_INSTANTANEOUS_EVENT(ELAPSED_TIME().bytes,
-                                voltage.bytes, current.bytes);
-    }
-
-    send_simple_response(RES_OK);
-    change_state(STATE_STOPPED);
-}
-
-static void raw_enter(void)
-{
-    update_sample_function();
-    reset_powermeter(0);
-}
-
-static void raw_exit(void)
-{
-}
 
 // ----------------------------------------------------------
 
@@ -130,41 +101,17 @@ void change_state(char new_state)
     case STATE_STOPPED:
         stopped_exit();
         break;
-    case STATE_SNAPSHOT:
-        sampling_exit();
-        break;
     case STATE_MONITOR:
-        sampling_exit();
-        break;
-    case STATE_RAW:
-        raw_exit();
+        monitor_exit();
         break;
     }
 
     switch (new_state) {
     case STATE_STOPPED:
-        DEBUG_INIT();
-        DEBUG_END("STOPPED");
         stopped_enter();
-        current_state_func = stopped;
-        break;
-    case STATE_SNAPSHOT:
-        DEBUG_INIT();
-        DEBUG_END("SNAPSHOT");
-        sampling_enter();
-        current_state_func = sampling;
         break;
     case STATE_MONITOR:
-        DEBUG_INIT();
-        DEBUG_END("MONITOR");
-        sampling_enter();
-        current_state_func = sampling;
-        break;
-    case STATE_RAW:
-        DEBUG_INIT();
-        DEBUG_END("RAW");
-        raw_enter();
-        current_state_func = raw;
+        monitor_enter();
         break;
     default:
         return;

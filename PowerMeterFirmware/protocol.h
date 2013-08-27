@@ -4,31 +4,29 @@
 #include "config.h"
 #include "powermeter.h"
 
-#ifndef CONF_START_SERIAL_BAUD
-#define CONF_START_SERIAL_BAUD 115200
-#endif
-
-#ifndef CONF_SERIAL_TIMEOUT
-#define CONF_SERIAL_TIMEOUT 500
-#endif
-
-#ifndef CONF_MESSAGE_END
-#define CONF_MESSAGE_END '\n'
+#ifndef CONF_SERIAL_BAUD
+#define CONF_SERIAL_BAUD 115200
 #endif
 
 #ifndef CONF_BUFFER_LEN
 #define CONF_BUFFER_LEN 32
 #endif
 
-/* Message opcodes */
-#define REQ_STOP     0x01
-#define REQ_SNAPSHOT 0x02
-#define REQ_MONITOR  0x03
-#define REQ_RAW      0x04
-#define RES_OK       0x51
-#define RES_NO       0x52
-#define RES_INST     0x53
-#define RES_AGREG    0x54
+/* Request opcodes */
+#define REQUEST_STOP    0x01
+#define REQUEST_MONITOR 0x02
+
+/* Reponse opcodes */
+#define RESPONSE_OK     0x50
+#define RESPONSE_NO     0x51
+#define RESPONSE_RAW    0x52
+#define RESPONSE_INST   0x53
+#define RESPONSE_AGRE   0x54
+
+/* Monitor modes */
+#define MODE_RAW  0x00
+#define MODE_INST 0x01
+#define MODE_AGRE 0x02
 
 void setup_protocol(void);
 void send_simple_response(uint8_t opcode);
@@ -36,30 +34,27 @@ void handle_incoming_data(void);
 
 extern uint8_t buffer[CONF_BUFFER_LEN];
 
-#if CONF_ARDUINO_PLATFORM == ARM
-#ifdef CONF_ARM_USB_ENABLED
-#define SERIAL SerialUSB
-#else
-#define SERIAL Serial
-#endif
-#else
-#define SERIAL Serial
-#endif
-
-#define SEND_INSTANTANEOUS_EVENT(elapsed, voltage, current)  \
+#define SEND_RAW_EVENT(voltage, current)                     \
     do {                                                     \
-        SERIAL.write(RES_INST);                              \
-        SERIAL.write(elapsed, 4);                            \
-        SERIAL.write(voltage, 4);                            \
-        SERIAL.write(current, 4);                            \
+        Serial.write(RESPONSE_RAW);                          \
+        Serial.write(voltage, 4);                            \
+        Serial.write(current, 4);                            \
     } while (0)
 
-#define SEND_AGREGATED_EVENT(vrms, irms, rpower)             \
+#define SEND_INST_EVENT(elapsed, voltage, current)           \
     do {                                                     \
-        SERIAL.write(RES_AGREG);                             \
-        SERIAL.write(vrms, 4);                               \
-        SERIAL.write(irms, 4);                               \
-        SERIAL.write(rpower, 4);                             \
+        Serial.write(RESPONSE_INST);                         \
+        Serial.write(elapsed, 4);                            \
+        Serial.write(voltage, 4);                            \
+        Serial.write(current, 4);                            \
+    } while (0)
+
+#define SEND_AGRE_EVENT(vrms, irms, rpower)                  \
+    do {                                                     \
+        Serial.write(RESPONSE_AGRE);                         \
+        Serial.write(vrms, 4);                               \
+        Serial.write(irms, 4);                               \
+        Serial.write(rpower, 4);                             \
     } while (0)
 
 #endif

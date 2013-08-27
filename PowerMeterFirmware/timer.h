@@ -8,16 +8,17 @@
 #define RESET_ELAPSED_TIME()                                  \
     do {                                                      \
         seconds_base = ((float) micros()) / MICRO_TO_SECOND;  \
-        seconds.number = seconds_base;                        \
+        seconds.n = seconds_base;                             \
     } while (0)
 
 #define REFRESH_ELAPSED_TIME()                                \
     do {                                                      \
-        seconds.number = ((float) micros()) / MICRO_TO_SECOND \
+        seconds.n = ((float) micros()) / MICRO_TO_SECOND      \
                             		- seconds_base;           \
     } while(0)
 
-#define ELAPSED_TIME() (seconds)
+#define ELAPSED_TIME() (seconds.n)
+#define ELAPSED_TIME_B() (seconds.b)
 
 extern float seconds_base;
 extern float_t seconds;

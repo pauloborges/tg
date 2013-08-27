@@ -32,3 +32,19 @@ def timer(func, **kwargs):
 def single_shot(func, **kwargs):
     foo = functools.partial(func, **kwargs)
     QtCore.QTimer.singleShot(10, foo)
+
+
+
+# --------------------------------------------------------
+
+def initialize():
+    global app
+    app = QtGui.QApplication([])
+    return app
+
+
+def idle_loop(function):
+    global loop # must store a persistent reference to the timer
+    loop = QtCore.QTimer()
+    loop.timeout.connect(function)
+    loop.start(0)

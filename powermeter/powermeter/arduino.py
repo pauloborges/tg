@@ -10,10 +10,10 @@ class ArduinoError(IOError):
 
 
 class Arduino(object):
-    def __init__(self, messages, debug=True):
+    def __init__(self, responses, debug=True):
         self.serial = None
         self.debug = debug
-        self.messages = messages
+        self.responses = responses
 
     def start(self, device=None, baud="115200"):
         """
@@ -62,15 +62,15 @@ class Arduino(object):
         message = self.serial.read()
         opcode = ord(message)
 
-        if opcode not in self.messages and message != 'D':
+        if opcode not in self.responses and message != 'D':
             raise ArduinoError("Unexpected: %s" % hex(opcode))
         elif message == 'D':
             message += self.serial.readline()
             print ">>> %s" % message,
             return self.read_message()
         
-        if self.messages[opcode] > 0:
-            message += self.serial.read(self.messages[opcode])
+        if self.responses[opcode] > 0:
+            message += self.serial.read(self.responses[opcode])
 
         if self.debug:
             print ">>> %s" % prettify(message)
