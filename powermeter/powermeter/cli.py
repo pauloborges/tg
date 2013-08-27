@@ -1,12 +1,17 @@
 # coding: utf-8
 
 import argparse
+import sys
+import os.path
+
+DEFAULT_CALIBRATION_FILE = os.path.join(os.path.expanduser('~'),
+                                        ".powermeter_calibration")
 
 parser = argparse.ArgumentParser(prog=u"powermeter")
 parsers = parser.add_subparsers()
 
 ###########################################################
-# Helper functions
+# Helpers
 ###########################################################
 
 def add_argument_fake(parser):
@@ -84,7 +89,6 @@ add_argument_fake(agregate)
 ###########################################################
 
 CALIBRATE   = "calibrate"
-
 CALIBRATE_OPTION_CHOICES = ("offset", "gain", "phase")
 
 calibrate = parsers.add_parser(CALIBRATE, help="calibrate "
@@ -96,7 +100,14 @@ calibrate_parsers = calibrate.add_argument(
     choices=CALIBRATE_OPTION_CHOICES
 )
 
-# TODO add calibration file
+calibrate.add_argument(
+    '-o', "--output",
+    dest="calibration_fd",
+    metavar="calibration_file",
+    type=argparse.FileType('w'),
+    default=DEFAULT_CALIBRATION_FILE
+)
+
 add_argument_fake(calibrate)
 
 ###########################################################
@@ -104,6 +115,10 @@ add_argument_fake(calibrate)
 ###########################################################
 
 
+
+###########################################################
+# External API
+###########################################################
 
 def parse_args():
     args = parser.parse_args()
