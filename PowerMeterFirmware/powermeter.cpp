@@ -11,8 +11,6 @@
 #define cbi(sfr, bit) (_SFR_BYTE(sfr) &= ~_BV(bit))
 #define sbi(sfr, bit) (_SFR_BYTE(sfr) |= _BV(bit))
 
-#define ADC_MAX_VALUE 1023
-
 #ifndef VOLTAGE_PIN
 #define VOLTAGE_PIN A0
 #endif
@@ -36,6 +34,8 @@ uint16_t QUANTITY;
 float PHASE_CORRECTION;
 float VOLTAGE_OFFSET;
 float CURRENT_OFFSET;
+
+float VOLTAGE_ZERO;
 
 // --------------------------------------------------------
 // Current sampling function
@@ -162,21 +162,27 @@ void update_sample_function(void)
         sample = real_sample;
 }
 
-void reset_powermeter(uint8_t mode)
+uint8_t reset_powermeter(uint8_t mode)
 {
     RESET_ELAPSED_TIME();
     sample();
 
-    if (mode == WAIT_NEW_WAVE)
-        return;
+    if (mode == WAIT_NEW_WAVE) {
+        uint32_t start_time = millis();
 
-    while (1) {
-        REFRESH_ELAPSED_TIME();
-        sample();
+        while (1) {
+            REFRESH_ELAPSED_TIME();
+            sample();
 
-        if (NEW_WAVE_STARTING())
-            break;
+            if (NEW_WAVE_STARTING())
+                break;
+            else if (millis() - start_time > 1000)
+                return 1;
+        }
     }
+
+    RESET_ELAPSED_TIME();
+    return 0;
 }
 
 void setup_powermeter(void)

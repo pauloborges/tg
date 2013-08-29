@@ -12,6 +12,6 @@ class Command(object):
 
     @staticmethod
     def check_args(current_args, args):
-        for arg in current_args:
-            if arg not in args:
+        for arg in args:
+            if arg not in current_args:
                 raise ValueError("Missing '%s' argument" % arg)

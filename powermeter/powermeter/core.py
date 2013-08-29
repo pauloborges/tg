@@ -16,7 +16,7 @@ def main():
     kwargs     = parse_args()
     powermeter = initialize(kwargs)
 
-    return powermeter.run()
+    return powermeter.exec_()
 
 
 if __name__ == "__main__":

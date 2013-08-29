@@ -29,20 +29,22 @@ static void stopped(void)
 
 static void stopped_enter(void)
 {
-    DEBUG_INIT();
-    DEBUG_END("STOPPED");
+    DEBUG_INIT(); DEBUG_END("");
 
     current_state_func = stopped;
 }
 
 static void stopped_exit(void)
 {
+    DEBUG_INIT();
+    DEBUG_END("");
 }
 
 // ----------------------------------------------------------
 
 static void monitor(void)
 {
+    remaining_quantity = QUANTITY;
     num_samples = 0;
 
     RESET_ACCUMULATORS();
@@ -71,21 +73,24 @@ static void monitor(void)
         real_power.n = sum_real_power / num_samples;
 
         SEND_AGRE_EVENT(rms_voltage.b, rms_current.b, real_power.b);
-
         // DEBUG_INIT(); DEBUG_END(num_samples);
     }
 }
 
 static void monitor_enter(void)
 {
-    DEBUG_INIT();
-    DEBUG_END("MONITOR");
+    DEBUG_INIT(); DEBUG_END("");
+
+    VOLTAGE_ZERO = (ADC_MAX_VALUE / 2) - VOLTAGE_OFFSET;
+
+    update_sample_function();
+
+    if (reset_powermeter(WAIT_NEW_WAVE)) {
+        DEBUG_INIT();
+        DEBUG_END("failed to reset powermeter");
+    }
 
     current_state_func = monitor;
-    remaining_quantity = QUANTITY;
-    
-    update_sample_function();
-    reset_powermeter(WAIT_NEW_WAVE);
 }
 
 static void monitor_exit(void)

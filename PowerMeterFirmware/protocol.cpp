@@ -80,7 +80,6 @@ static void handle_monitor_request(void)
         goto error;
     }
 
-    DEBUG_INIT(); DEBUG_END("MONITOR params");
     DEBUG_INIT(); DEBUG("fake: ");             DEBUG_END(fake);
     DEBUG_INIT(); DEBUG("mode: ");             DEBUG_END(mode);
     DEBUG_INIT(); DEBUG("quantity: ");         DEBUG_END(quantity);
@@ -97,6 +96,7 @@ static void handle_monitor_request(void)
 
     change_state(STATE_MONITOR);
     send_simple_response(RESPONSE_OK);
+
     return;
 
 error:

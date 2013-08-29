@@ -16,7 +16,7 @@
 #define REQUEST_STOP    0x01
 #define REQUEST_MONITOR 0x02
 
-/* Reponse opcodes */
+/* Response opcodes */
 #define RESPONSE_OK     0x50
 #define RESPONSE_NO     0x51
 #define RESPONSE_RAW    0x52

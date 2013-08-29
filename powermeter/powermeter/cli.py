@@ -11,27 +11,6 @@ parser = argparse.ArgumentParser(prog=u"powermeter")
 parsers = parser.add_subparsers()
 
 ###########################################################
-# Helpers
-###########################################################
-
-def add_argument_fake(parser):
-    parser.add_argument(
-        '-f', "--fake",
-        dest="fake_samples",
-        action="store_true",
-        help="use fake samples"
-    )
-
-def add_argument_calibration_file(parser, flag, name, mode):
-    parser.add_argument(
-        flag, name,
-        dest="calibration_fd",
-        metavar="calibration_file",
-        type=argparse.FileType(mode),
-        default=DEFAULT_CALIBRATION_FILE
-    )
-
-###########################################################
 # Monitor parser
 ###########################################################
 
@@ -52,12 +31,23 @@ monitor.add_argument(
 monitor.add_argument(
     "quantity",
     type=int,
-    help="number of waves (instantaneous or agregate option) "
-            "or number of samples (raw option)"
+    help="number of waves for agregate option"
 )
 
-add_argument_fake(monitor)
-add_argument_calibration_file(monitor, '-c', "--calibration", 'r')
+monitor.add_argument(
+    '-f', "--fake",
+    dest="fake_samples",
+    action="store_true",
+    help="use fake samples"
+)
+
+parser.add_argument(
+    "-c", "--calibration",
+    dest="calibration_fd",
+    metavar="file",
+    type=argparse.FileType(mode),
+    default=DEFAULT_CALIBRATION_FILE
+)
 
 ###########################################################
 # Calibrate parser
@@ -75,14 +65,20 @@ calibrate.add_argument(
     choices=CALIBRATE_OPTION_CHOICES
 )
 
-add_argument_fake(calibrate)
-add_argument_calibration_file(calibrate, '-o', "--output", 'w')
+calibrate.add_argument(
+    '-f', "--fake",
+    dest="fake_samples",
+    action="store_true",
+    help="use fake samples"
+)
 
-###########################################################
-# Disagregate parser
-###########################################################
-
-
+calibrate.add_argument(
+    "-o", "--output",
+    dest="calibration_fd",
+    metavar="file",
+    type=argparse.FileType(mode),
+    default=DEFAULT_CALIBRATION_FILE
+)
 
 ###########################################################
 # External API

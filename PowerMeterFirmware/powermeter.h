@@ -15,6 +15,8 @@ extern float PHASE_CORRECTION;
 extern float VOLTAGE_OFFSET;
 extern float CURRENT_OFFSET;
 
+extern float VOLTAGE_ZERO;
+
 // --------------------------------------------------------
 // Current sampling function
 
@@ -51,16 +53,18 @@ extern float_t real_power;
 // --------------------------------------------------------
 // External API
 
+#define ADC_MAX_VALUE 1023
+
 #define DONT_WAIT_NEW_WAVE 0x00
 #define WAIT_NEW_WAVE      0x01
 
 void update_sample_function(void);
-void reset_powermeter(uint8_t);
+uint8_t reset_powermeter(uint8_t);
 void setup_powermeter(void);
 
 #define NEW_WAVE_STARTING()                                 \
-    (last_voltage <= VOLTAGE_OFFSET                         \
-        && voltage.n >= VOLTAGE_OFFSET)                     \
+    (last_voltage <= VOLTAGE_ZERO                           \
+        && voltage.n >= VOLTAGE_ZERO)                       \
 
 #define RESET_ACCUMULATORS()                                \
     do {                                                    \

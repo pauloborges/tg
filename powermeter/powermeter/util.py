@@ -18,6 +18,13 @@ class bundle(object):
         return unicode(self).encode("utf-8")
 
 
+def enum(*sequential, **named):
+    enums = dict(zip(sequential, range(len(sequential))), **named)
+    reverse = dict((value, key) for key, value in enums.iteritems())
+    enums['reverse'] = reverse
+    return type('Enum', (), enums)
+
+
 class LazyFunction(object):
     def __init__(self, module, name):
         self.module = module
@@ -35,8 +42,4 @@ def lazyfunc(module, function):
     return LazyFunction(module, function)
 
 
-def enum(*sequential, **named):
-    enums = dict(zip(sequential, range(len(sequential))), **named)
-    reverse = dict((value, key) for key, value in enums.iteritems())
-    enums['reverse'] = reverse
-    return type('Enum', (), enums)
+

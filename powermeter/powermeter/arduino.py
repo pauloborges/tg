@@ -1,12 +1,7 @@
 # coding: utf-8
 
 import serial as pyserial
-from time import sleep
 import os
-
-
-class ArduinoError(IOError):
-    pass
 
 
 class Arduino(object):
@@ -20,7 +15,7 @@ class Arduino(object):
         Inicializa uma comunicação serial com o Arduino.
         """
         if self.serial is not None:
-            raise ArduinoError(u"Serial communication already "
+            raise IOError(u"Serial communication already "
                                 "established")
 
         if not device:
@@ -34,7 +29,8 @@ class Arduino(object):
                 device, baud)
 
         self.serial = pyserial.Serial(device, baud)
-
+        self.serial.flushInput()
+        self.serial.flushOutput()
 
     def close(self):
         """
@@ -44,7 +40,6 @@ class Arduino(object):
         self.serial.close()
         self.serial = None
 
-
     def send_message(self, message):
         l = self.serial.write(message)
 
@@ -52,25 +47,25 @@ class Arduino(object):
             if self.debug:
                 print "<<< %s...%s [broken message]" % (
                     prettify(message[:l]), prettify(message[l+1:]))
-            raise ArduinoError("")
+            raise IOError("")
 
         if self.debug:
             print "<<< %s" % prettify(message)
-
 
     def read_message(self):
         message = self.serial.read()
         opcode = ord(message)
 
         if opcode not in self.responses and message != 'D':
-            raise ArduinoError("Unexpected: %s" % hex(opcode))
+            print ">>> ??? %s" % prettify(message)
+            return
         elif message == 'D':
             message += self.serial.readline()
             print ">>> %s" % message,
             return self.read_message()
         
         if self.responses[opcode] > 0:
-            message += self.serial.read(self.responses[opcode])
+            message += self.serial.read(self.responses[opcode] - 1)
 
         if self.debug:
             print ">>> %s" % prettify(message)

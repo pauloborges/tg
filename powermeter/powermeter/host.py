@@ -1,5 +1,7 @@
 # coding: utf-8
 
+import signal
+
 from powermeter import qt
 from powermeter.monitor import Monitor
 #from powermeter.calibrate import Calibrate
@@ -19,7 +21,7 @@ def build_command(command, **kwargs):
 
 class PowerMeter(object):
     def __init__(self):
-        pass
+        self.already_quit = False
 
     @classmethod
     def initialize(cls, **kwargs):
@@ -30,11 +32,30 @@ class PowerMeter(object):
 
         powermeter = PowerMeter()
         powermeter.command = build_command(command, **kwargs)
+        signal.signal(signal.SIGINT, powermeter.sigint_handler)
 
         return powermeter
 
-    def run(self):
-        app = qt.initialize()
-        qt.idle_loop(self.command.run)
+    def exec_(self):
+        self.app = qt.initialize()
+        qt.idle_loop(self.run)
 
-        return app.exec_()
+        return self.app.exec_()
+
+    def quit(self):
+        if self.already_quit:
+            return
+
+        self.already_quit = True
+        self.command.sigint_handler()
+        self.app.quit()
+
+    def run(self):
+        try:
+            self.command.run()
+        except:
+            self.quit()
+
+    def sigint_handler(self, *args):
+        print "\ninterrupting gracefully..."
+        self.quit()

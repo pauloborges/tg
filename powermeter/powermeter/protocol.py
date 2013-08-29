@@ -6,7 +6,9 @@ from powermeter.util import bundle, enum
 
 __all__ = (
     "REQUEST",
+    "MODE",
     "RESPONSE",
+    "RESPONSE_SIZE",
     "enc_stop_request",
     "enc_monitor_request",
     "dec_message",
@@ -17,18 +19,18 @@ REQUEST = enum(
     MONITOR=0x02,
 )
 
+MODE = enum(
+    RAW=0x00,
+    INST=0x01,
+    AGRE=0x02,
+)
+
 RESPONSE = enum(
     OK=0x50,
     NO=0x51,
     RAW=0x52,
     INST=0x53,
     AGRE=0x54,
-)
-
-MODE = enum(
-    RAW=0x00,
-    INST=0x01,
-    AGRE=0x02,
 )
 
 RESPONSE_SIZE = {
