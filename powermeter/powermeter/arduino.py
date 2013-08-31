@@ -1,11 +1,12 @@
 # coding: utf-8
 
 import serial as pyserial
+import sys
 import os
 
 
 class Arduino(object):
-    def __init__(self, responses, debug=True):
+    def __init__(self, responses, debug):
         self.serial = None
         self.debug = debug
         self.responses = responses
@@ -45,30 +46,30 @@ class Arduino(object):
 
         if l < len(message):
             if self.debug:
-                print "<<< %s...%s [broken message]" % (
-                    prettify(message[:l]), prettify(message[l+1:]))
+                sys.stderr.write("<<< %s...%s [broken message]\n" % (
+                    prettify(message[:l]), prettify(message[l+1:])))
             raise IOError("")
 
         if self.debug:
-            print "<<< %s" % prettify(message)
+            sys.stderr.write("<<< %s\n" % prettify(message))
 
     def read_message(self):
         message = self.serial.read()
         opcode = ord(message)
 
         if opcode not in self.responses and message != 'D':
-            print ">>> ??? %s" % prettify(message)
+            sys.stderr.write(">>> ??? %s\n" % prettify(message))
             return
         elif message == 'D':
             message += self.serial.readline()
-            print ">>> %s" % message,
+            sys.stderr.write(">>> %s" % message)
             return self.read_message()
         
         if self.responses[opcode] > 0:
             message += self.serial.read(self.responses[opcode] - 1)
 
         if self.debug:
-            print ">>> %s" % prettify(message)
+            sys.stderr.write(">>> %s\n" % prettify(message))
 
         return message
 

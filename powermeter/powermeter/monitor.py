@@ -4,6 +4,7 @@ import time
 
 from powermeter.command import Command
 from powermeter.arduino import Arduino
+from powermeter.config import Config
 from powermeter.protocol import *
 from powermeter.util import enum
 
@@ -16,7 +17,7 @@ NO_CURRENT_OFFSET = 0
 class Monitor(Command):
     OPTIONS = ("raw", "instantaneous", "agregate")
     ARGS = ("fake_samples", "debug", "quantity",
-            "calibration_fd", "output_fd")
+            "calibration_filename", "output_fd")
 
     def __init__(self, **kwargs):
         option = kwargs.pop("option", None)
@@ -49,6 +50,11 @@ class MonitorOption(object):
         self.fake_samples = kwargs["fake_samples"]
         self.debug = kwargs["debug"]
         self.output = kwargs["output_fd"]
+        self.config = Config(kwargs["calibration_filename"], False)
+
+        self.VOLTAGE_GAIN = self.config.calibration("voltage_gain")
+        self.CURRENT_GAIN = self.config.calibration("current_gain")
+        self.REAL_POWER_GAIN = self.config.calibration("real_power_gain")
 
         self.status = self.STATUS.INIT
 
@@ -80,8 +86,10 @@ class MonitorOption(object):
 
     def send_monitor_request(self, mode):
         self.arduino.send_message(enc_monitor_request(mode,
-            self.fake_samples, self.quantity, NO_PHASECAL,
-            NO_VOLTAGE_OFFSET, NO_CURRENT_OFFSET))
+            self.fake_samples, self.quantity,
+            self.config.calibration("phase"),
+            self.config.calibration("voltage_offset"),
+            self.config.calibration("current_offset")))
 
 
 class MonitorRaw(MonitorOption):
@@ -109,7 +117,10 @@ class MonitorRaw(MonitorOption):
                 % RESPONSE.reverse[opcode])
 
     def print_data(self, data):
-        self.output.write("%f %f\n" % (data.voltage, data.current))
+        self.output.write("%f %f\n" % (
+            data.voltage * self.VOLTAGE_GAIN,
+            data.current * self.CURRENT_GAIN
+        ))
 
 
 class MonitorInstantaneous(MonitorOption):
@@ -138,7 +149,9 @@ class MonitorInstantaneous(MonitorOption):
 
     def print_data(self, data):
         self.output.write("%f %f %f\n" % (data.elapsed,
-            data.voltage, data.current))
+            data.voltage * self.VOLTAGE_GAIN,
+            data.current * self.CURRENT_GAIN
+        ))
 
 
 class MonitorAgregate(MonitorOption):
@@ -166,5 +179,8 @@ class MonitorAgregate(MonitorOption):
                 % RESPONSE.reverse[opcode])
 
     def print_data(self, data):
-        self.output.write("%f %f %f\n" % (data.rms_voltage,
-            data.rms_current, data.real_power))
+        self.output.write("%f %f %f\n" % (
+            data.rms_voltage * self.VOLTAGE_GAIN,
+            data.rms_current * self.CURRENT_GAIN,
+            data.real_power * self.REAL_POWER_GAIN
+        ))

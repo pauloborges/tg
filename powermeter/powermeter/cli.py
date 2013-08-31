@@ -4,8 +4,8 @@ import argparse
 import os.path
 import sys
 
-DEFAULT_CALIBRATION_FILE = os.path.join(os.path.expanduser('~'),
-                                        ".powermeter_calibration")
+DEFAULT_CONFIG_FILE = os.path.join(os.path.expanduser('~'),
+                                        ".powermeter")
 
 parser = argparse.ArgumentParser(prog=u"powermeter")
 parsers = parser.add_subparsers()
@@ -49,10 +49,9 @@ monitor.add_argument(
 
 monitor.add_argument(
     "-c", "--calibration",
-    dest="calibration_fd",
+    dest="calibration_filename",
     metavar="file",
-    type=argparse.FileType('r'),
-    default=DEFAULT_CALIBRATION_FILE
+    default=DEFAULT_CONFIG_FILE
 )
 
 monitor.add_argument(
@@ -87,10 +86,9 @@ calibrate.add_argument(
 
 calibrate.add_argument(
     "-o", "--output",
-    dest="calibration_fd",
+    dest="calibration_filename",
     metavar="file",
-    type=argparse.FileType('w'),
-    default=DEFAULT_CALIBRATION_FILE
+    default=DEFAULT_CONFIG_FILE
 )
 
 ###########################################################

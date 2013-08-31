@@ -40,6 +40,7 @@ def single_shot(func, **kwargs):
 def initialize():
     global app
     app = QtGui.QApplication([])
+    QtCore.pyqtRemoveInputHook()
     return app
 
 

@@ -1,5 +1,6 @@
 # coding: utf-8
 
+import traceback
 import signal
 
 from powermeter import qt
@@ -48,13 +49,13 @@ class PowerMeter(object):
 
         self.already_quit = True
         self.command.sigint_handler()
-        self.app.quit()
+        qt.quit()
 
     def run(self):
         try:
             self.command.run()
         except Exception, e:
-            print "Exception raised:", e
+            traceback.print_exc()
             self.quit()
 
     def sigint_handler(self, *args):

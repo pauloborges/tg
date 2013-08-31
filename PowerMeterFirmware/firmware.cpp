@@ -81,13 +81,17 @@ static void monitor(void)
 
 static void monitor_enter(void)
 {
+    uint8_t wait = WAIT_NEW_WAVE;
+    if (MODE == MODE_RAW)
+        wait = DONT_WAIT_NEW_WAVE;
+
     DEBUG_INIT(); DEBUG_END("");
 
+    update_sample_function();
     VOLTAGE_ZERO = (ADC_MAX_VALUE / 2) - VOLTAGE_OFFSET;
 
-    update_sample_function();
 
-    if (reset_powermeter(WAIT_NEW_WAVE)) {
+    if (reset_powermeter(wait)) {
         DEBUG_INIT();
         DEBUG_END("failed to reset powermeter");
     }
