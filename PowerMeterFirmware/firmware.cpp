@@ -38,6 +38,8 @@ static void stopped_exit(void)
 {
     DEBUG_INIT();
     DEBUG_END("");
+
+    digitalWrite(LED_PIN, LOW);
 }
 
 // ----------------------------------------------------------

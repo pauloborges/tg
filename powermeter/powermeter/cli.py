@@ -1,8 +1,8 @@
 # coding: utf-8
 
 import argparse
-import sys
 import os.path
+import sys
 
 DEFAULT_CALIBRATION_FILE = os.path.join(os.path.expanduser('~'),
                                         ".powermeter_calibration")
@@ -35,19 +35,32 @@ monitor.add_argument(
 )
 
 monitor.add_argument(
-    '-f', "--fake",
+    "-f", "--fake",
     dest="fake_samples",
     action="store_true",
     help="use fake samples"
 )
 
-parser.add_argument(
+monitor.add_argument(
+    "-d", "--debug",
+    dest="debug",
+    action="store_true",
+    help="print debug to stderr")
+
+monitor.add_argument(
     "-c", "--calibration",
     dest="calibration_fd",
     metavar="file",
-    type=argparse.FileType(mode),
+    type=argparse.FileType('r'),
     default=DEFAULT_CALIBRATION_FILE
 )
+
+monitor.add_argument(
+    "-o", "--output",
+    dest="output_fd",
+    metavar="file",
+    type=argparse.FileType('w'),
+    default=sys.stdout)
 
 ###########################################################
 # Calibrate parser
@@ -76,7 +89,7 @@ calibrate.add_argument(
     "-o", "--output",
     dest="calibration_fd",
     metavar="file",
-    type=argparse.FileType(mode),
+    type=argparse.FileType('w'),
     default=DEFAULT_CALIBRATION_FILE
 )
 

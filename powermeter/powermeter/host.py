@@ -4,10 +4,9 @@ import signal
 
 from powermeter import qt
 from powermeter.monitor import Monitor
-#from powermeter.calibrate import Calibrate
-#from powermeter.disagregate import Disagregate
+from powermeter.calibrate import Calibrate
 
-__all__ = ("PowerMeter")
+__all__ = ("PowerMeter", "quit")
 
 
 def build_command(command, **kwargs):
@@ -30,6 +29,7 @@ class PowerMeter(object):
         except KeyError:
             raise ValueError("Missing 'command' argument")
 
+        global powermeter
         powermeter = PowerMeter()
         powermeter.command = build_command(command, **kwargs)
         signal.signal(signal.SIGINT, powermeter.sigint_handler)
@@ -53,9 +53,15 @@ class PowerMeter(object):
     def run(self):
         try:
             self.command.run()
-        except:
+        except Exception, e:
+            print "Exception raised:", e
             self.quit()
 
     def sigint_handler(self, *args):
         print "\ninterrupting gracefully..."
         self.quit()
+
+
+def quit():
+    global powermeter
+    powermeter.quit()

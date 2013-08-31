@@ -15,7 +15,8 @@ NO_CURRENT_OFFSET = 0
 
 class Monitor(Command):
     OPTIONS = ("raw", "instantaneous", "agregate")
-    ARGS = ("fake_samples", "quantity", "calibration_fd")
+    ARGS = ("fake_samples", "debug", "quantity",
+            "calibration_fd", "output_fd")
 
     def __init__(self, **kwargs):
         option = kwargs.pop("option", None)
@@ -40,12 +41,14 @@ class Monitor(Command):
 class MonitorOption(object):
     STATUS = enum("INIT", "SAMPLING")
 
-    def __init__(self, fake_samples, quantity, **kwargs):
+    def __init__(self, quantity, **kwargs):
         if quantity <= 0:
             raise ValueError("'quantity' must be a positive integer")
 
-        self.fake_samples = fake_samples
         self.quantity = quantity
+        self.fake_samples = kwargs["fake_samples"]
+        self.debug = kwargs["debug"]
+        self.output = kwargs["output_fd"]
 
         self.status = self.STATUS.INIT
 
@@ -56,7 +59,7 @@ class MonitorOption(object):
         2. Send a STOP REQUEST.
         3. Wait for an OK RESPONSE.
         """
-        self.arduino = Arduino(RESPONSE_SIZE)
+        self.arduino = Arduino(RESPONSE_SIZE, debug=self.debug)
         self.arduino.start()
 
         self.arduino.send_message(enc_stop_request())
@@ -82,8 +85,6 @@ class MonitorOption(object):
 
 
 class MonitorRaw(MonitorOption):
-    STATUS = enum("INIT", "SAMPLING")
-
     def status_init(self):
         super(MonitorRaw, self).init()
 
@@ -98,15 +99,17 @@ class MonitorRaw(MonitorOption):
         self.status = self.STATUS.SAMPLING
 
     def status_sampling(self):
-        """Continuous sampling."""
         message = self.arduino.read_message()
         opcode, data = dec_message(message)
 
         if opcode == RESPONSE.RAW:
-            print data
+            self.print_data(data)
         else:
             raise IOError("Expecting RAW, got %s"
                 % RESPONSE.reverse[opcode])
+
+    def print_data(self, data):
+        self.output.write("%f %f\n" % (data.voltage, data.current))
 
 
 class MonitorInstantaneous(MonitorOption):
@@ -124,15 +127,18 @@ class MonitorInstantaneous(MonitorOption):
         self.status = self.STATUS.SAMPLING
 
     def status_sampling(self):
-        """Continuous sampling."""
         message = self.arduino.read_message()
         opcode, data = dec_message(message)
 
         if opcode == RESPONSE.INST:
-            print data
+            self.print_data(data)
         else:
             raise IOError("Expecting INST, got %s"
                 % RESPONSE.reverse[opcode])
+
+    def print_data(self, data):
+        self.output.write("%f %f %f\n" % (data.elapsed,
+            data.voltage, data.current))
 
 
 class MonitorAgregate(MonitorOption):
@@ -150,12 +156,15 @@ class MonitorAgregate(MonitorOption):
         self.status = self.STATUS.SAMPLING
 
     def status_sampling(self):
-        """Continuous sampling."""
         message = self.arduino.read_message()
         opcode, data = dec_message(message)
 
         if opcode == RESPONSE.AGRE:
-            print data
+            self.print_data(data)
         else:
             raise IOError("Expecting AGRE, got %s"
                 % RESPONSE.reverse[opcode])
+
+    def print_data(self, data):
+        self.output.write("%f %f %f\n" % (data.rms_voltage,
+            data.rms_current, data.real_power))
