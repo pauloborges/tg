@@ -182,5 +182,5 @@ class MonitorAgregate(MonitorOption):
         self.output.write("%f %f %f\n" % (
             data.rms_voltage * self.VOLTAGE_GAIN,
             data.rms_current * self.CURRENT_GAIN,
-            data.real_power * self.REAL_POWER_GAIN
+            data.real_power# * self.REAL_POWER_GAIN
         ))

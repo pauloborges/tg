@@ -117,7 +117,7 @@ class CalibrateGain(CalibrateOption):
         current_gain = self.DIG_TO_ANA * (sensor_range / 2.5)
         print "Current gain: ", current_gain
 
-        real_power_gain = (self.DIG_TO_ANA
+        real_power_gain = (self.DIG_TO_ANA ** 2
             * (mains_voltage / adc_voltage)
             * (sensor_range / 2.5)
         )

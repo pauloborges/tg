@@ -104,8 +104,6 @@ static void fake_sample(void)
     last_fixed_voltage = fixed_voltage;
     fixed_voltage = last_raw_voltage + PHASE_CORRECTION
                             * (raw_voltage - last_raw_voltage);
-    // last_fixed_voltage = fixed_voltage;
-    // fixed_voltage = raw_voltage;
 
     last_voltage = voltage.n;
     last_current = current.n;
@@ -136,8 +134,6 @@ static void real_sample(void)
     last_fixed_voltage = fixed_voltage;
     fixed_voltage = last_raw_voltage + PHASE_CORRECTION
                             * (raw_voltage - last_raw_voltage);
-    // last_fixed_voltage = fixed_voltage;
-    // fixed_voltage = raw_voltage;
 
     last_voltage = voltage.n;
     last_current = current.n;
