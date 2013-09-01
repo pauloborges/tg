@@ -62,7 +62,8 @@ class Arduino(object):
             return
         elif message == 'D':
             message += self.serial.readline()
-            sys.stderr.write(">>> %s" % message)
+            if self.debug:
+                sys.stderr.write(">>> %s" % message)
             return self.read_message()
         
         if self.responses[opcode] > 0:

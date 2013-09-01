@@ -6,6 +6,7 @@ import signal
 from powermeter import qt
 from powermeter.monitor import Monitor
 from powermeter.calibrate import Calibrate
+from powermeter.visualize import Visualize
 
 __all__ = ("PowerMeter", "quit")
 

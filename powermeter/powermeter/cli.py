@@ -59,7 +59,8 @@ monitor.add_argument(
     dest="output_fd",
     metavar="file",
     type=argparse.FileType('w'),
-    default=sys.stdout)
+    default=sys.stdout
+)
 
 ###########################################################
 # Calibrate parser
@@ -89,6 +90,29 @@ calibrate.add_argument(
     dest="calibration_filename",
     metavar="file",
     default=DEFAULT_CONFIG_FILE
+)
+
+###########################################################
+# Calibrate parser
+###########################################################
+
+VISUALIZE = "visualize"
+
+visualize = parsers.add_parser(VISUALIZE, help="show energy"
+                    "-related graphs")
+visualize.set_defaults(command=VISUALIZE)
+
+visualize.add_argument(
+    "option",
+    choices=("raw", "instantaneous", "agregate")
+)
+
+visualize.add_argument(
+    "input_fd",
+    metavar="input",
+    type=argparse.FileType('r'),
+    default=sys.stdin,
+    nargs='?'
 )
 
 ###########################################################

@@ -49,3 +49,10 @@ def idle_loop(function):
     loop = QtCore.QTimer()
     loop.timeout.connect(function)
     loop.start(0)
+
+
+def gui(size):
+    win = pg.GraphicsWindow()
+    win.resize(*size)
+
+    return win

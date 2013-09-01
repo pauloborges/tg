@@ -52,10 +52,6 @@ class MonitorOption(object):
         self.output = kwargs["output_fd"]
         self.config = Config(kwargs["calibration_filename"], False)
 
-        self.VOLTAGE_GAIN = self.config.calibration("voltage_gain")
-        self.CURRENT_GAIN = self.config.calibration("current_gain")
-        self.REAL_POWER_GAIN = self.config.calibration("real_power_gain")
-
         self.status = self.STATUS.INIT
 
     def init(self):
@@ -121,9 +117,18 @@ class MonitorRaw(MonitorOption):
                 % RESPONSE.reverse[opcode])
 
     def unpack_data(self, data):
+        voltage = (data.voltage
+                    * self.config.calibration("voltage_gain"))
+
+        current = (data.current
+                    * self.config.calibration("current_gain"))
+
+        real_power = voltage * current
+
         return (
-            data.voltage * self.config.calibration("voltage_gain"),
-            data.current * self.config.calibration("current_gain")
+            voltage,
+            current,
+            real_power
         )
 
 
@@ -184,6 +189,7 @@ class MonitorAgregate(MonitorOption):
                 % RESPONSE.reverse[opcode])
 
     def unpack_data(self, data):
+        print "AAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
         rms_voltage = (data.rms_voltage
                         * self.config.calibration("voltage_gain"))
 
