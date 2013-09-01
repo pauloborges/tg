@@ -1,6 +1,6 @@
 # coding: utf-8
 
-import time
+import math
 
 from powermeter.command import Command
 from powermeter.arduino import Arduino
@@ -184,8 +184,27 @@ class MonitorAgregate(MonitorOption):
                 % RESPONSE.reverse[opcode])
 
     def unpack_data(self, data):
+        rms_voltage = (data.rms_voltage
+                        * self.config.calibration("voltage_gain"))
+
+        rms_current = (data.rms_current
+                        * self.config.calibration("current_gain"))
+
+        real_power = (data.real_power
+                        * self.config.calibration("real_power_gain"))
+
+        total_power = rms_voltage * rms_current
+
+        if total_power < real_power:
+            print "total_power < real_power"
+            total_power = real_power
+
+        reac_power = math.sqrt(total_power**2 - real_power**2)
+
+        power_factor = real_power / total_power
+
         return (
-            data.rms_voltage * self.config.calibration("voltage_gain"),
-            data.rms_current * self.config.calibration("current_gain"),
-            data.real_power * self.config.calibration("real_power_gain")
+            rms_voltage, rms_current,
+            real_power, reac_power,
+            total_power, power_factor
         )
