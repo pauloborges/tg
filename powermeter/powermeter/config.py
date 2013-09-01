@@ -22,7 +22,7 @@ class Config(object):
     def build_default_config(self):
         self.parser.add_section(CALIB)
 
-        self.parser.set(CALIB, "phase", str(1.0))
+        self.parser.set(CALIB, "phase", str(1.5))
         self.parser.set(CALIB, "voltage_offset", str(0.0))
         self.parser.set(CALIB, "current_offset", str(0.0))
         self.parser.set(CALIB, "voltage_gain", str(1.0))

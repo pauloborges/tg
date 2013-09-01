@@ -91,6 +91,10 @@ class MonitorOption(object):
             self.config.calibration("voltage_offset"),
             self.config.calibration("current_offset")))
 
+    def print_data(self, data):
+        data = self.unpack_data(data)
+        self.output.write(' '.join("%f" % d for d in data) + '\n')
+
 
 class MonitorRaw(MonitorOption):
     def status_init(self):
@@ -116,11 +120,11 @@ class MonitorRaw(MonitorOption):
             raise IOError("Expecting RAW, got %s"
                 % RESPONSE.reverse[opcode])
 
-    def print_data(self, data):
-        self.output.write("%f %f\n" % (
-            data.voltage * self.VOLTAGE_GAIN,
-            data.current * self.CURRENT_GAIN
-        ))
+    def unpack_data(self, data):
+        return (
+            data.voltage * self.config.calibration("voltage_gain"),
+            data.current * self.config.calibration("current_gain")
+        )
 
 
 class MonitorInstantaneous(MonitorOption):
@@ -147,11 +151,12 @@ class MonitorInstantaneous(MonitorOption):
             raise IOError("Expecting INST, got %s"
                 % RESPONSE.reverse[opcode])
 
-    def print_data(self, data):
-        self.output.write("%f %f %f\n" % (data.elapsed,
-            data.voltage * self.VOLTAGE_GAIN,
-            data.current * self.CURRENT_GAIN
-        ))
+    def unpack_data(self, data):
+        return (
+            data.elapsed,
+            data.voltage * self.config.calibration("voltage_gain"),
+            data.current * self.config.calibration("current_gain")
+        )
 
 
 class MonitorAgregate(MonitorOption):
@@ -178,9 +183,9 @@ class MonitorAgregate(MonitorOption):
             raise IOError("Expecting AGRE, got %s"
                 % RESPONSE.reverse[opcode])
 
-    def print_data(self, data):
-        self.output.write("%f %f %f\n" % (
-            data.rms_voltage * self.VOLTAGE_GAIN,
-            data.rms_current * self.CURRENT_GAIN,
-            data.real_power# * self.REAL_POWER_GAIN
-        ))
+    def unpack_data(self, data):
+        return (
+            data.rms_voltage * self.config.calibration("voltage_gain"),
+            data.rms_current * self.config.calibration("current_gain"),
+            data.real_power * self.config.calibration("real_power_gain")
+        )

@@ -183,7 +183,23 @@ uint8_t reset_powermeter(uint8_t mode)
 
 void setup_powermeter(void)
 {
+    // Prescale 16 -> 100 [~5 ksps]
+    // sbi(ADCSRA, ADPS2);
+    // cbi(ADCSRA, ADPS1);
+    // cbi(ADCSRA, ADPS0);
+
+    // Prescale 32 -> 101 [~4.3 ksps]
+    // sbi(ADCSRA, ADPS2);
+    // cbi(ADCSRA, ADPS1);
+    // sbi(ADCSRA, ADPS0);
+
+    // Prescale 64 -> 110 [~3.5 ksps]
     sbi(ADCSRA, ADPS2);
-    cbi(ADCSRA, ADPS1);
+    sbi(ADCSRA, ADPS1);
     cbi(ADCSRA, ADPS0);
+
+    // Prescale 128 -> 111 [~2.5 ksps]
+    // sbi(ADCSRA, ADPS2);
+    // sbi(ADCSRA, ADPS1);
+    // sbi(ADCSRA, ADPS0);
 }
