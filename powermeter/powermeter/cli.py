@@ -93,7 +93,7 @@ calibrate.add_argument(
 )
 
 ###########################################################
-# Calibrate parser
+# Visualize parser
 ###########################################################
 
 VISUALIZE = "visualize"

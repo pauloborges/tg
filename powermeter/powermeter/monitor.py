@@ -1,6 +1,7 @@
 # coding: utf-8
 
 import math
+import sys
 
 from powermeter.command import Command
 from powermeter.arduino import Arduino
@@ -17,7 +18,7 @@ NO_CURRENT_OFFSET = 0
 class Monitor(Command):
     OPTIONS = ("raw", "instantaneous", "agregate")
     ARGS = ("fake_samples", "debug", "quantity",
-            "calibration_filename", "output_fd")
+            "calibration_filename")#, "output_fd")
 
     def __init__(self, **kwargs):
         option = kwargs.pop("option", None)
@@ -74,7 +75,8 @@ class MonitorOption(object):
 
     def run(self):
         """Run the function with same name as current status."""
-        getattr(self, "status_" + self.STATUS.reverse[self.status].lower())()
+        getattr(self, "status_"
+                + self.STATUS.reverse[self.status].lower())()
 
     def sigint_handler(self):
         self.arduino.send_message(enc_stop_request())
@@ -89,7 +91,11 @@ class MonitorOption(object):
 
     def print_data(self, data):
         data = self.unpack_data(data)
-        self.output.write(' '.join("%f" % d for d in data) + '\n')
+        out = ' '.join("%f" % d for d in data) + '\n'
+        # sys.stderr.write('MONITOR: ' + out)
+        self.output.write(out)
+        self.output.flush()
+        # print out,
 
 
 class MonitorRaw(MonitorOption):
@@ -157,10 +163,19 @@ class MonitorInstantaneous(MonitorOption):
                 % RESPONSE.reverse[opcode])
 
     def unpack_data(self, data):
+        voltage = (data.voltage
+                    * self.config.calibration("voltage_gain"))
+
+        current = (data.current
+                    * self.config.calibration("current_gain"))
+
+        real_power = voltage * current
+
         return (
             data.elapsed,
-            data.voltage * self.config.calibration("voltage_gain"),
-            data.current * self.config.calibration("current_gain")
+            voltage,
+            current,
+            real_power
         )
 
 
@@ -189,7 +204,6 @@ class MonitorAgregate(MonitorOption):
                 % RESPONSE.reverse[opcode])
 
     def unpack_data(self, data):
-        print "AAAAAAAAAAAAAAAAAAAAAAAAAAAAA"
         rms_voltage = (data.rms_voltage
                         * self.config.calibration("voltage_gain"))
 
