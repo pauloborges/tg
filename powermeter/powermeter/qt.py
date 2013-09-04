@@ -2,6 +2,7 @@
 
 from pyqtgraph.Qt import QtGui, QtCore
 import pyqtgraph as pg
+import numpy as np
 import functools
 
 def quit():
@@ -38,3 +39,12 @@ def gui(size):
     view.show()
 
     return layout
+
+def scatter(**kwargs):
+    return pg.ScatterPlotItem(size=10, pen=pg.mkPen(None))#,
+            #brush=pg.mkBrush(255, 255, 255, 120))
+
+def mk_brushes(size, r, g, b):
+    return [pg.mkBrush(r, g, b, int(a))
+        for a in np.linspace(0, 255, size-1)] + [
+            pg.mkBrush(255, 0, 0, 255)]

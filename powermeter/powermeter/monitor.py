@@ -1,6 +1,7 @@
 # coding: utf-8
 
 import math
+import time
 import sys
 
 from powermeter.command import Command
@@ -123,12 +124,8 @@ class MonitorRaw(MonitorOption):
                 % RESPONSE.reverse[opcode])
 
     def unpack_data(self, data):
-        voltage = (data.voltage
-                    * self.config.calibration("voltage_gain"))
-
-        current = (data.current
-                    * self.config.calibration("current_gain"))
-
+        voltage = data.voltage
+        current = data.current
         real_power = voltage * current
 
         return (
@@ -191,10 +188,12 @@ class MonitorAgregate(MonitorOption):
             raise IOError("Expecting OK, got %s"
                 % RESPONSE.reverse[opcode])
 
+        self.base_time = time.time()
         self.status = self.STATUS.SAMPLING
 
     def status_sampling(self):
         message = self.arduino.read_message()
+        self.current_time = time.time()
         opcode, data = dec_message(message)
 
         if opcode == RESPONSE.AGRE:
@@ -224,6 +223,7 @@ class MonitorAgregate(MonitorOption):
         power_factor = real_power / total_power
 
         return (
+            self.current_time - self.base_time,
             rms_voltage, rms_current,
             real_power, reac_power,
             total_power, power_factor

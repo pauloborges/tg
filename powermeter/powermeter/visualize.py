@@ -38,12 +38,14 @@ class VisualizeOption(object):
     WIN_SIZE = (1000, 600)
     STATUS = enum("INIT", "DRAWING")
     DATA_SIZE_LEN = 100
+    AGRE_SIZE_LEN  = 20
+    POWER_SIZE_LEN = 10
 
     VOLTAGE_RANGE = (-400, 400)
     CURRENT_RANGE = (-30, 30)
     REAL_POWER_RANGE = (0, 7000)
 
-    RMS_VOLTAGE_RANGE = (160, 300)
+    RMS_VOLTAGE_RANGE = (200, 250)
     RMS_CURRENT_RANGE = (0, 5)
 
     TOTAL_POWER_RANGE = (0, 7000)
@@ -121,21 +123,21 @@ class VisualizeRaw(VisualizeOption):
                                         self.real_power_data)
 
     def build_gui(self):
-        self.voltage_plot = self.build_plot("V",
+        self.voltage_plot = self.build_plot(
                 y_range=self.VOLTAGE_RANGE, title=u"Tensão")
         self.voltage_curve = self.voltage_plot.plot()
         self.voltage_data = deque(maxlen=self.DATA_SIZE_LEN)
 
         self.next_row()
 
-        self.current_plot = self.build_plot("A", title=u"Corrente")
+        self.current_plot = self.build_plot(title=u"Corrente")
         self.current_curve = self.current_plot.plot()
         self.current_data = deque(maxlen=self.DATA_SIZE_LEN)
 
         self.next_row()
 
-        self.real_power_plot = self.build_plot("W",
-                                            title=u"Potência real")
+        self.real_power_plot = self.build_plot(
+                title=u"Tensão x Corrente")
         self.real_power_curve = self.real_power_plot.plot()
         self.real_power_data = deque(maxlen=self.DATA_SIZE_LEN)
 
@@ -191,39 +193,69 @@ class VisualizeAgregate(VisualizeOption):
         self.status = self.STATUS.DRAWING
 
     def status_drawing(self):
-        # data = self.unpack_line(self.input_file.readline())
-        # self..._data.append(data[...])
-        # self...curve.setData(self.elapsed, self..._data)
-        time.sleep(0.1)
+        data = self.unpack_line(self.input_file.readline())
+
+        self.elapsed.append(data[0])
+        self.rms_voltage_data.append(data[1])
+        self.rms_current_data.append(data[2])
+        self.real_power_data.append(data[3])
+        self.reac_power_data.append(data[4])
+        self.power_factor_data.append(data[6])
+
+        self.rms_voltage_curve.setData(self.elapsed,
+                                        self.rms_voltage_data)
+
+        self.rms_current_curve.setData(self.elapsed,
+                                        self.rms_current_data)
+        self.rms_current_plot.setYRange(0,
+                                        max(self.rms_current_data))
+
+        self.power_factor_curve.setData(self.elapsed,
+                                self.power_factor_data)
+        l = len(self.real_power_data)
+
+        self.power_scatter.setData(
+                    self.real_power_data, self.reac_power_data,
+                    brush=self.power_scatter_brushes[-l:])
+
+        self.power_plot.setXRange(0, max(self.real_power_data))
+        self.power_plot.setYRange(0, max(self.reac_power_data))
 
     def build_gui(self):
+        self.elapsed = deque(maxlen=self.AGRE_SIZE_LEN)
+
         self.rms_voltage_plot = self.build_plot("V", "s",
-            y_range=self.RMS_VOLTAGE_RANGE, title=u"Tensão RMS",
-            row=0, col=0, rowspan=1, colspan=1)
+            title=u"Tensão RMS",
+            row=0, col=0, rowspan=1, colspan=1,
+            y_range=self.RMS_VOLTAGE_RANGE)
         self.rms_voltage_curve = self.rms_voltage_plot.plot()
-        self.rms_voltage_data = deque(maxlen=self.DATA_SIZE_LEN)
+        self.rms_voltage_data = deque(maxlen=self.AGRE_SIZE_LEN)
 
         self.rms_current_plot = self.build_plot("A", "s",
-            y_range=self.RMS_CURRENT_RANGE, title=u"Corrente RMS",
+            title=u"Corrente RMS",
             row=1, col=0, rowspan=1, colspan=1)
         self.rms_current_curve = self.rms_current_plot.plot()
-        self.current_data = deque(maxlen=self.DATA_SIZE_LEN)
+        self.rms_current_data = deque(maxlen=self.AGRE_SIZE_LEN)
 
         self.power_factor_plot = self.build_plot("", "s",
-            y_range=self.POWER_FACTOR_RANGE,
             title=u"Fator de potência",
-            row=2, col=0, rowspan=1, colspan=1)
-        self.rms_current_curve = self.rms_current_plot.plot()
-        self.current_data = deque(maxlen=self.DATA_SIZE_LEN)
+            row=2, col=0, rowspan=1, colspan=1,
+            y_range=self.POWER_FACTOR_RANGE)
+        self.power_factor_curve = self.power_factor_plot.plot()
+        self.power_factor_data = deque(maxlen=self.AGRE_SIZE_LEN)
 
         self.power_plot = self.build_plot("VAr", "W",
-            y_range=self.REAC_POWER_RANGE,
-            x_range=self.REAL_POWER_RANGE,
             title=u"Potência real vs potência reativa",
-            row=0, col=1, rowspan=3, colspan=1)
+            row=0, col=1, rowspan=3, colspan=1)#,
+            #y_range=self.REAC_POWER_RANGE,
+            #x_range=self.REAL_POWER_RANGE)
         self.win.layout.setColumnStretchFactor(1, 2)
-        self.power_scatter = self.power_plot.plot()
-        self.reac_power_data = deque(maxlen=self.DATA_SIZE_LEN)
-        self.real_power_data = deque(maxlen=self.DATA_SIZE_LEN)
+        self.power_scatter = qt.scatter()
+        self.power_plot.addItem(self.power_scatter)
 
-        self.elapsed = deque(maxlen=self.DATA_SIZE_LEN)
+        self.power_scatter_brushes = qt.mk_brushes(
+                            self.POWER_SIZE_LEN, 255, 255, 255)
+
+        self.reac_power_data = deque(maxlen=self.POWER_SIZE_LEN)
+        self.real_power_data = deque(maxlen=self.POWER_SIZE_LEN)
+

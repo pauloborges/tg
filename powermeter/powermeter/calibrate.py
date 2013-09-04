@@ -98,8 +98,6 @@ class CalibrateGain(CalibrateOption):
 
     def __init__(self, **kwargs):
         super(CalibrateGain, self).__init__(**kwargs)
-        self.number_of_samples = 10000
-        self.data = []
 
     def status_init(self):
         print "Calibrating voltage gain..."
@@ -137,14 +135,16 @@ class CalibrateGain(CalibrateOption):
 class CalibrateOffset(CalibrateOption):
     def __init__(self, **kwargs):
         super(CalibrateOffset, self).__init__(**kwargs)
-        self.number_of_samples = 10000
+        self.number_of_samples = 50000
         self.data = []
 
     def status_init(self):
         super(CalibrateOffset, self).init()
 
+        print "Fetching %d samples" % self.number_of_samples
+
         self.arduino.send_message(enc_monitor_request(MODE.RAW,
-            self.fake_samples, 100, NO_PHASECAL, NO_VOLTAGE_OFFSET,
+            self.fake_samples, 60, NO_PHASECAL, NO_VOLTAGE_OFFSET,
             NO_CURRENT_OFFSET))
         message = self.arduino.read_message()
         opcode, data = dec_message(message)
@@ -166,6 +166,8 @@ class CalibrateOffset(CalibrateOption):
             if self.number_of_samples == 0:
                 self.arduino.send_message(enc_stop_request())
                 self.process_data_and_quit()
+            elif self.number_of_samples % 10000 == 0:
+                print "%d" % self.number_of_samples
 
         else:
             raise IOError("Expecting RAW, got %s"

@@ -69,8 +69,8 @@ class Arduino(object):
         if self.responses[opcode] > 0:
             message += self.serial.read(self.responses[opcode] - 1)
 
-        if self.debug:
-            sys.stderr.write(">>> %s\n" % prettify(message))
+        # if self.debug:
+        #     sys.stderr.write(">>> %s\n" % prettify(message))
 
         return message
 

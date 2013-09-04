@@ -131,6 +131,10 @@ static void real_sample(void)
     raw_voltage = REAL_VOLTAGE_SAMPLE();
     raw_current = REAL_CURRENT_SAMPLE();
 
+    // DEBUG_INIT(); DEBUG("Before: "); DEBUG_END(raw_current);
+    // raw_current &= ~0x0001;
+    // DEBUG_INIT(); DEBUG("After: "); DEBUG_END(raw_current);
+
     last_fixed_voltage = fixed_voltage;
     fixed_voltage = last_raw_voltage + PHASE_CORRECTION
                             * (raw_voltage - last_raw_voltage);

@@ -1,4 +1,3 @@
 #!/usr/bin/env bash
 
-python -m powermeter.core calibrate $@
-
+python -m powermeter.core calibrate $@ && cat ~/.powermeter
