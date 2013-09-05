@@ -7,8 +7,12 @@ CALIB = "calibration"
 
 
 class Config(object):
-    def __init__(self, filename, create=True):
+    def __init__(self, filename=None, create=True):
         self.parser = ConfigParser.SafeConfigParser()
+
+        if filename is None:
+            from powermeter.cli import DEFAULT_CONFIG_FILE
+            filename = DEFAULT_CONFIG_FILE
         self.filename = filename
 
         try:

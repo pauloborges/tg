@@ -200,6 +200,7 @@ class VisualizeAgregate(VisualizeOption):
         self.rms_current_data.append(data[2])
         self.real_power_data.append(data[3])
         self.reac_power_data.append(data[4])
+        self.total_power_data.append(data[5])
         self.power_factor_data.append(data[6])
 
         self.rms_voltage_curve.setData(self.elapsed,
@@ -209,6 +210,11 @@ class VisualizeAgregate(VisualizeOption):
                                         self.rms_current_data)
         self.rms_current_plot.setYRange(0,
                                         max(self.rms_current_data))
+
+        self.total_power_curve.setData(self.elapsed,
+                                        self.total_power_data)
+        self.total_power_plot.setYRange(0,
+                                        max(self.total_power_data))
 
         self.power_factor_curve.setData(self.elapsed,
                                 self.power_factor_data)
@@ -237,16 +243,22 @@ class VisualizeAgregate(VisualizeOption):
         self.rms_current_curve = self.rms_current_plot.plot()
         self.rms_current_data = deque(maxlen=self.AGRE_SIZE_LEN)
 
+        self.total_power_plot = self.build_plot("VA", "s",
+            title=u"Potência total",
+            row=2, col=0, rowspan=1, colspan=1)
+        self.total_power_curve = self.total_power_plot.plot()
+        self.total_power_data = deque(maxlen=self.AGRE_SIZE_LEN)
+
         self.power_factor_plot = self.build_plot("", "s",
             title=u"Fator de potência",
-            row=2, col=0, rowspan=1, colspan=1,
+            row=3, col=0, rowspan=1, colspan=1,
             y_range=self.POWER_FACTOR_RANGE)
         self.power_factor_curve = self.power_factor_plot.plot()
         self.power_factor_data = deque(maxlen=self.AGRE_SIZE_LEN)
 
         self.power_plot = self.build_plot("VAr", "W",
             title=u"Potência real vs potência reativa",
-            row=0, col=1, rowspan=3, colspan=1)#,
+            row=0, col=1, rowspan=4, colspan=1)#,
             #y_range=self.REAC_POWER_RANGE,
             #x_range=self.REAL_POWER_RANGE)
         self.win.layout.setColumnStretchFactor(1, 2)

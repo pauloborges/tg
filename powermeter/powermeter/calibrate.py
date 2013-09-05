@@ -98,32 +98,69 @@ class CalibrateGain(CalibrateOption):
 
     def __init__(self, **kwargs):
         super(CalibrateGain, self).__init__(**kwargs)
+        self.number_of_samples = 10
+        self.data = []
 
     def status_init(self):
-        print "Calibrating voltage gain..."
+        super(CalibrateGain, self).init()
 
-        mains_voltage = float(raw_input("Mains RMS voltage: "))
-        adc_voltage = float(raw_input("ADC RMS voltage: "))
+        raw_input("Plug a device with known power "
+                    "[press enter to continue]")
 
-        voltage_gain = self.DIG_TO_ANA * (mains_voltage / adc_voltage)
-        print "Voltage gain: ", voltage_gain
+        self.mains_voltage = float(raw_input("Mains RMS voltage: "))
+        self.device_power = float(raw_input("Device Real Power: "))
 
-        print "Calibrating current gain..."
+        print "Fetching %d samples" % self.number_of_samples
 
-        sensor_range = float(raw_input("Current sensor range: "))
+        self.arduino.send_message(enc_monitor_request(MODE.AGRE,
+            self.fake_samples, 60,
+            self.config.calibration("phase"),
+            self.config.calibration("voltage_offset"),
+            self.config.calibration("current_offset")))
+        message = self.arduino.read_message()
+        opcode, data = dec_message(message)
 
-        current_gain = self.DIG_TO_ANA * (sensor_range / 2.5)
-        print "Current gain: ", current_gain
+        if opcode != RESPONSE.OK:
+            raise IOError("Expecting OK, got %s"
+                % RESPONSE.reverse[opcode])
 
-        real_power_gain = (self.DIG_TO_ANA ** 2
-            * (mains_voltage / adc_voltage)
-            * (sensor_range / 2.5)
-        )
+        self.status = self.STATUS.SAMPLING
 
-        self.config.calibration("voltage_gain", voltage_gain)
-        self.config.calibration("current_gain", current_gain)
-        self.config.calibration("real_power_gain", real_power_gain)
+    def status_sampling(self):
+        message = self.arduino.read_message()
+        opcode, data = dec_message(message)
 
+        if opcode == RESPONSE.AGRE:
+            self.data.append(self.extract_data(data))
+
+            self.number_of_samples -= 1
+            if self.number_of_samples == 0:
+                self.arduino.send_message(enc_stop_request())
+                self.process_data_and_quit()
+            else:
+                print self.number_of_samples
+
+        else:
+            raise IOError("Expecting AGRE, got %s"
+                % RESPONSE.reverse[opcode])
+
+    def extract_data(self, data):
+        return (data.rms_voltage, data.rms_current, data.real_power)
+
+    def process_data_and_quit(self):
+        v, i, p = zip(*self.data)
+
+        v_mean = sum(v) / len(v)
+        i_mean = sum(i) / len(i)
+        p_mean = sum(p) / len(p)
+
+        v_gain = self.mains_voltage / v_mean
+        p_gain = self.device_power / p_mean
+        i_gain = p_gain / v_gain
+
+        self.config.calibration("voltage_gain", v_gain)
+        self.config.calibration("current_gain", i_gain)
+        self.config.calibration("real_power_gain", p_gain)
         self.config.save()
 
         quit()
