@@ -116,6 +116,27 @@ visualize.add_argument(
 )
 
 ###########################################################
+# Signature parser
+###########################################################
+
+SIGNATURE = "signature"
+
+signature = parsers.add_parser(SIGNATURE, help="manage "
+                    "loads power signatures")
+signature.set_defaults(command=SIGNATURE)
+
+signature.add_argument(
+    "option",
+    choices=("new", "remove", "list", "show")
+)
+
+signature.add_argument(
+    "signature_file",
+    default="signatures",
+    nargs='?'
+)
+
+###########################################################
 # External API
 ###########################################################
 

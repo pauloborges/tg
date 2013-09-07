@@ -4,6 +4,7 @@ from pyqtgraph.Qt import QtGui, QtCore
 import pyqtgraph as pg
 import numpy as np
 import functools
+import random
 
 def quit():
     global app
@@ -41,10 +42,45 @@ def gui(size):
     return layout
 
 def scatter(**kwargs):
-    return pg.ScatterPlotItem(size=10, pen=pg.mkPen(None))#,
-            #brush=pg.mkBrush(255, 255, 255, 120))
+    if "unicolor" in kwargs:
+       return pg.ScatterPlotItem(size=10, pen=pg.mkPen(None),
+            brush=pg.mkBrush(255, 255, 255, 50)) 
+
+    return pg.ScatterPlotItem(size=10, pen=pg.mkPen(None))
 
 def mk_brushes(size, r, g, b):
     return [pg.mkBrush(r, g, b, int(a))
         for a in np.linspace(0, 255, size-1)] + [
             pg.mkBrush(255, 0, 0, 255)]
+
+def build_widget():
+    w = QtGui.QWidget()
+    layout = QtGui.QGridLayout()
+    w.setLayout(layout)
+    return w
+
+def button(**kwargs):
+    return QtGui.QPushButton(**kwargs)
+
+def spinbox():
+    return QtGui.QDoubleSpinBox()
+
+def label(text):
+    return QtGui.QLabel(text=text)
+
+def mk_colored_brushes(alpha, colors):
+    color_table = gen_colors(colors, alpha)
+    return [color_table[c] for c in colors]
+
+def gen_colors(indexes, alpha):
+    indexes = set(indexes)
+
+    return {
+        i: pg.mkBrush(
+            random.randint(0, 255),
+            random.randint(0, 255),
+            random.randint(0, 255),
+            alpha
+        ) 
+        for i in indexes
+    }

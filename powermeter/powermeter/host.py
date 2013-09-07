@@ -7,6 +7,7 @@ from powermeter import qt
 from powermeter.monitor import Monitor
 from powermeter.calibrate import Calibrate
 from powermeter.visualize import Visualize
+from powermeter.signature import Signature
 
 __all__ = ("PowerMeter", "quit")
 
