@@ -87,3 +87,23 @@ def gen_colors(indexes, alpha):
 
 def brush(r, g, b, a):
     return pg.mkBrush(r, g, b, a)
+
+def arrow(**kwargs):
+    return pg.ArrowItem(**kwargs)
+
+def text(*args, **kwargs):
+    return pg.TextItem(*args, **kwargs)
+
+def update_gui():
+    QtGui.QApplication.processEvents()
+
+def input_dialog(*args):
+    text, ok = QtGui.QInputDialog.getText(None, *args)
+
+    if not ok:
+        raise UserCancelError()
+
+    return text
+
+def UserCancelError(Exception):
+    pass
