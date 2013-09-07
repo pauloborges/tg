@@ -77,10 +77,13 @@ def gen_colors(indexes, alpha):
 
     return {
         i: pg.mkBrush(
-            random.randint(0, 255),
-            random.randint(0, 255),
-            random.randint(0, 255),
-            alpha
+            i == 0 and 255 or random.randint(0, 255),
+            i == 0 and 255 or random.randint(0, 255),
+            i == 0 and 255 or random.randint(0, 255),
+            i == 0 and 50 or alpha
         ) 
         for i in indexes
     }
+
+def brush(r, g, b, a):
+    return pg.mkBrush(r, g, b, a)

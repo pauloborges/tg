@@ -115,7 +115,8 @@ class SignatureNewOption(SignatureOption):
         l = len(self.real_power_data)
 
         self.power_scatter.setData(
-                    self.real_power_data, self.reac_power_data)
+                    self.real_power_data, self.reac_power_data,
+                    size=10)
 
         if data[3] > self.x_range:
             self.x_range = data[3]
@@ -148,6 +149,7 @@ class SignatureNewOption(SignatureOption):
                                     self.button_cluster_clicked)
         self.button_cluster.setEnabled(False)
         self.spinbox_cluster = qt.spinbox()
+        self.spinbox_cluster.setValue(1)
 
         self.button_tag = qt.button(text=u"Taggear")
         self.button_tag.clicked.connect(self.button_tag_clicked)
@@ -202,16 +204,47 @@ class SignatureNewOption(SignatureOption):
             depth=1,
             method="single"
         )
+        clusters = list(clusters)
 
-        for n in xrange(X.shape[0]):
-            print X[n, :], clusters[n]
+        clusters = self.remove_transition_clusters(clusters)
+        self.generate_prototypes(clusters)
 
         self.plot_clusterized(clusters)
+
+    def remove_transition_clusters(self, clusters):
+        from collections import Counter
+        occurrences = Counter(clusters)
+
+        to_remove = [k for k, v in occurrences.iteritems() if v < 2]
+        return [0 if v in to_remove else v for v in clusters]
+
+    def generate_prototypes(self, clusters):
+        self.prototypes = []
+
+        last_cluster = max(clusters)
+        for cluster in xrange(1, last_cluster+1):
+            elems_indexes = [i for i, c in enumerate(clusters)
+                                if c == cluster]
+            l = len(elems_indexes)
+            print cluster, elems_indexes
+
+            prot_x = sum([x for i, x
+                            in enumerate(self.real_power_data)
+                            if i in elems_indexes]) / l
+            prot_y = sum([y for i, y
+                            in enumerate(self.reac_power_data)
+                            if i in elems_indexes]) / l
+
+            self.prototypes.append((prot_x, prot_y))
 
     def plot_clusterized(self, clusters):
         self.power_scatter.setData(
                     self.real_power_data, self.reac_power_data,
-                    brush=qt.mk_colored_brushes(150, clusters))
+                    brush=qt.mk_colored_brushes(100, clusters),
+                    size=10)
+
+        self.power_scatter.addPoints(pos=self.prototypes,
+            brush=qt.brush(255, 255, 255, 255), size=7)
 
     def button_tag_clicked(self):
         pass
