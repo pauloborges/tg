@@ -89,8 +89,6 @@ class SignatureRemoveOption(SignatureOption):
     STATUS = enum("INIT")
 
     def status_init(self):
-        super(SignatureRemoveOption, self).init()
-
         try:
             with open(self.signature_file, 'r') as f:
                 file_content = json.loads(f.read())
@@ -107,6 +105,74 @@ class SignatureRemoveOption(SignatureOption):
                 f.write(json.dumps(file_content))
 
         qt.quit()
+
+
+class SignatureListOption(SignatureOption):
+    STATUS = enum("INIT")
+
+    def status_init(self):
+        try:
+            with open(self.signature_file, 'r') as f:
+                file_content = json.loads(f.read())
+        except (IOError, ValueError):
+            file_content = {}
+
+        for k, v in file_content.iteritems():
+            print k
+            states = v["states"]
+            transitions = v["transitions"]
+
+            for n, pos in states.iteritems():
+                print "  ", n, pos
+
+            print
+            for t in transitions:
+                print "  ", t[0], "-->", t[1], ":", t[2]
+            print "-----------------------------"
+
+        qt.quit()
+
+
+class SignatureShowOption(SignatureOption):
+    STATUS = enum("INIT", "WAIT")
+
+    def status_init(self):
+        super(SignatureShowOption, self).init()
+        self.build_gui()
+
+        try:
+            with open(self.signature_file, 'r') as f:
+                file_content = json.loads(f.read())
+        except (IOError, ValueError):
+            file_content = {}
+
+        for k, v in file_content.iteritems():
+            print k
+            states = v["states"]
+
+            for n, pos in states.iteritems():
+                if n.lower() == "off":
+                    continue
+                self.power_scatter.addPoints(
+                        brush=qt.brush(255, 255, 255, 255),
+                        pos=[pos], size=10)
+                text = qt.text(k+'/'+n, anchor=(0.5, 0))
+                text.setPos(pos[0], pos[1]-0.5)
+                self.power_plot.addItem(text)
+
+        self.status = self.STATUS.WAIT
+
+    def status_wait(self):
+        time.sleep(0.05)
+
+    def build_gui(self):
+        self.power_plot = self.build_plot("VAr", "W",
+            title=u"Potência real vs potência reativa")
+        self.power_scatter = qt.scatter(unicolor=True)
+        self.power_plot.addItem(self.power_scatter)
+
+    def sigint_handler(self):
+        pass
 
 
 class SignatureNewOption(SignatureOption):

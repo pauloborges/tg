@@ -137,6 +137,22 @@ signature.add_argument(
 )
 
 ###########################################################
+# Disaggregate parser
+###########################################################
+
+DISAGGREGATE = "disaggregate"
+
+disaggregate = parsers.add_parser(DISAGGREGATE,
+            help="disaggregate energy consumption")
+disaggregate.set_defaults(command=DISAGGREGATE)
+
+disaggregate.add_argument(
+    "signature_file",
+    default="signatures",
+    nargs='?'
+)
+
+###########################################################
 # External API
 ###########################################################
 

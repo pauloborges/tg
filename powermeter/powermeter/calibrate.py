@@ -172,7 +172,7 @@ class CalibrateGain(CalibrateOption):
 class CalibrateOffset(CalibrateOption):
     def __init__(self, **kwargs):
         super(CalibrateOffset, self).__init__(**kwargs)
-        self.number_of_samples = 50000
+        self.number_of_samples = 25000
         self.data = []
 
     def status_init(self):
@@ -203,7 +203,7 @@ class CalibrateOffset(CalibrateOption):
             if self.number_of_samples == 0:
                 self.arduino.send_message(enc_stop_request())
                 self.process_data_and_quit()
-            elif self.number_of_samples % 10000 == 0:
+            elif self.number_of_samples % 5000 == 0:
                 print "%d" % self.number_of_samples
 
         else:
@@ -216,8 +216,8 @@ class CalibrateOffset(CalibrateOption):
     def process_data_and_quit(self):
         v, i = zip(*self.data)
 
-        v_offset = sum(v) / len(v)
-        i_offset = sum(i) / len(i)
+        v_offset = round(sum(v) / len(v))
+        i_offset = round(sum(i) / len(i))
 
         self.config.calibration("voltage_offset", v_offset)
         self.config.calibration("current_offset", i_offset)

@@ -8,6 +8,7 @@ from powermeter.monitor import Monitor
 from powermeter.calibrate import Calibrate
 from powermeter.visualize import Visualize
 from powermeter.signature import Signature
+from powermeter.disaggregate import Disaggregate
 
 __all__ = ("PowerMeter", "quit")
 
