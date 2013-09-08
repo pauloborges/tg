@@ -103,7 +103,7 @@ def input_dialog(*args):
     if not ok:
         raise UserCancelError()
 
-    return text
+    return str(text)
 
 def UserCancelError(Exception):
     pass

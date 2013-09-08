@@ -50,12 +50,7 @@ class SignatureOption(object):
 
     def __init__(self, **kwargs):
         self.status = self.STATUS.INIT
-
-        try:
-            with open(kwargs["signature_file"], 'r') as f:
-                self.signatures = json.loads(f.read())
-        except IOError:
-            self.signatures = {}
+        self.signature_file = kwargs["signature_file"]
 
     def init(self):
         self.win = qt.gui(self.WIN_SIZE)
@@ -88,6 +83,30 @@ class SignatureOption(object):
 
     def unpack_line(self, line):
         return tuple(float(x) for x in line.split())
+
+
+class SignatureRemoveOption(SignatureOption):
+    STATUS = enum("INIT")
+
+    def status_init(self):
+        super(SignatureRemoveOption, self).init()
+
+        try:
+            with open(self.signature_file, 'r') as f:
+                file_content = json.loads(f.read())
+        except (IOError, ValueError):
+            file_content = {}
+
+        try:
+            del file_content[raw_input("Nome: ")]
+        except KeyError:
+            print u"Assinatura não encontrada"
+            qt.quit()
+
+        with open(self.signature_file, 'w') as f:
+                f.write(json.dumps(file_content))
+
+        qt.quit()
 
 
 class SignatureNewOption(SignatureOption):
@@ -155,10 +174,6 @@ class SignatureNewOption(SignatureOption):
         self.button_tag.clicked.connect(self.button_tag_clicked)
         self.button_tag.setEnabled(False)
 
-        self.button_sign = qt.button(text=u"Assinaturas")
-        self.button_sign.clicked.connect(self.button_sign_clicked)
-        self.button_sign.setEnabled(False)
-
         self.button_save = qt.button(text=u"Salvar")
         self.button_save.clicked.connect(self.button_save_clicked)
         self.button_save.setEnabled(False)
@@ -169,8 +184,7 @@ class SignatureNewOption(SignatureOption):
         self.cfgwin.layout().addWidget(self.button_cluster, 2, 0)
         self.cfgwin.layout().addWidget(self.spinbox_cluster, 2, 1)
         self.cfgwin.layout().addWidget(self.button_tag, 3, 0, 1, 2)
-        self.cfgwin.layout().addWidget(self.button_sign, 4, 0, 1, 2)
-        self.cfgwin.layout().addWidget(self.button_save, 5, 0, 1, 2)
+        self.cfgwin.layout().addWidget(self.button_save, 4, 0, 1, 2)
         self.cfgwin.show()
 
     def button_start_clicked(self):
@@ -181,7 +195,7 @@ class SignatureNewOption(SignatureOption):
                                     "Nome do equipamento", "")
         self.power_plot.setTitle(self.appliance_name)
 
-        self.monitor = subprocess.Popen("./monitor agregate 60",
+        self.monitor = subprocess.Popen("./monitor agregate 30",
                             stdout=subprocess.PIPE, shell=True)
 
         self.status = self.STATUS.COLLECTING
@@ -262,12 +276,38 @@ class SignatureNewOption(SignatureOption):
         
         self.power_plot.removeItem(arrow)
 
+        self.transitions = []
+
+        l = len(self.prototypes)
+        for i in xrange(l):
+            for j in xrange(i+1, l):
+                self.transitions.append((
+                    self.labels[j], self.labels[i], (
+                    self.prototypes[i][0] - self.prototypes[j][0],
+                    self.prototypes[i][1] - self.prototypes[j][1]
+                )))
+
         self.button_cluster.setEnabled(False)
         self.button_tag.setEnabled(False)
-        self.button_sign.setEnabled(True)
-
-    def button_sign_clicked(self):
-        pass
+        self.button_save.setEnabled(True)
 
     def button_save_clicked(self):
-        self.button_save.setEnabled(False)
+        try:
+            with open(self.signature_file, 'r') as f:
+                file_content = json.loads(f.read())
+        except (IOError, ValueError):
+            file_content = {}
+
+        states = {}
+        for i, prot in enumerate(self.prototypes):
+            states[self.labels[i]] = prot
+
+        file_content[self.appliance_name] = {
+            "states": states,
+            "transitions": self.transitions
+        }
+
+        with open(self.signature_file, 'w') as f:
+                f.write(json.dumps(file_content))
+
+        qt.quit()
