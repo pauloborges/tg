@@ -39,7 +39,7 @@ class VisualizeOption(object):
     STATUS = enum("INIT", "DRAWING")
     DATA_SIZE_LEN = 100
     AGRE_SIZE_LEN  = 20
-    POWER_SIZE_LEN = 10
+    POWER_SIZE_LEN = 100
 
     VOLTAGE_RANGE = (-400, 400)
     CURRENT_RANGE = (-30, 30)

@@ -92,6 +92,11 @@ def arrow(**kwargs):
     return pg.ArrowItem(**kwargs)
 
 def text(*args, **kwargs):
+    if "pos" in kwargs:
+        pos = kwargs.pop("pos")
+        t = pg.TextItem(*args, **kwargs)
+        t.setPos(pos)
+        return t
     return pg.TextItem(*args, **kwargs)
 
 def update_gui():
