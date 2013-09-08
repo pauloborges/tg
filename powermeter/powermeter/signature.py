@@ -7,7 +7,9 @@ import json
 import sys
 
 import numpy as np
-import scipy.cluster.hierarchy as hcluster
+# import scipy.cluster.hierarchy as hcluster
+from sklearn.cluster import MiniBatchKMeans
+from collections import Counter
 
 from powermeter.command import Command
 from powermeter.util import enum
@@ -153,6 +155,10 @@ class SignatureNewOption(SignatureOption):
         self.button_tag.clicked.connect(self.button_tag_clicked)
         self.button_tag.setEnabled(False)
 
+        self.button_sign = qt.button(text=u"Assinaturas")
+        self.button_sign.clicked.connect(self.button_sign_clicked)
+        self.button_sign.setEnabled(False)
+
         self.button_save = qt.button(text=u"Salvar")
         self.button_save.clicked.connect(self.button_save_clicked)
         self.button_save.setEnabled(False)
@@ -163,7 +169,8 @@ class SignatureNewOption(SignatureOption):
         self.cfgwin.layout().addWidget(self.button_cluster, 2, 0)
         self.cfgwin.layout().addWidget(self.spinbox_cluster, 2, 1)
         self.cfgwin.layout().addWidget(self.button_tag, 3, 0, 1, 2)
-        self.cfgwin.layout().addWidget(self.button_save, 4, 0, 1, 2)
+        self.cfgwin.layout().addWidget(self.button_sign, 4, 0, 1, 2)
+        self.cfgwin.layout().addWidget(self.button_save, 5, 0, 1, 2)
         self.cfgwin.show()
 
     def button_start_clicked(self):
@@ -197,91 +204,70 @@ class SignatureNewOption(SignatureOption):
         X[:, 0] = self.real_power_data
         X[:, 1] = self.reac_power_data
 
-        clusters = hcluster.fclusterdata(X,
-            self.spinbox_cluster.value(),
-            criterion="maxclust",
-            metric="euclidean",
-            depth=1,
-            method="single"
-        )
-        clusters = list(clusters)
+        clustering = MiniBatchKMeans(self.spinbox_cluster.value())
+        clustering.fit(X)
 
-        clusters = self.remove_transition_clusters(clusters)
-        self.generate_prototypes(clusters)
+        # Identifica os centróides dos clusteres
+        centroids = clustering.cluster_centers_.tolist()
 
-        self.plot_clusterized(clusters)
+        # Conta quantos elementos cada cluster possui
+        predictions = clustering.predict(X)
+        occurrences = Counter(predictions)
 
-    def remove_transition_clusters(self, clusters):
-        from collections import Counter
-        occurrences = Counter(clusters)
+        # Identifica os clusteres que possuem somente 1 elemento
+        # (serão tratados como clusteres de transição)
+        transition_clusters = [k for k, v in occurrences.iteritems()
+                                if v < 2]
 
-        to_remove = [k for k, v in occurrences.iteritems() if v < 2]
-        return [0 if v in to_remove else v for v in clusters]
+        # Remove os centróides de clusteres de transição
+        centroids = [e for i, e in enumerate(centroids)
+                        if i not in transition_clusters]
 
-    def generate_prototypes(self, clusters):
-        self.prototypes = []
+        predictions = [-1 if v in transition_clusters else v
+                        for v in predictions]
+        
+        self.prototypes = centroids
+        self.plot_clusterized(predictions)
 
-        last_cluster = max(clusters)
-        for cluster in xrange(1, last_cluster+1):
-            elems_indexes = [i for i, c in enumerate(clusters)
-                                if c == cluster]
-            l = len(elems_indexes)
-
-            prot_x = sum([x for i, x
-                            in enumerate(self.real_power_data)
-                            if i in elems_indexes]) / l
-            prot_y = sum([y for i, y
-                            in enumerate(self.reac_power_data)
-                            if i in elems_indexes]) / l
-
-            self.prototypes.append((prot_x, prot_y))
-
-    def plot_clusterized(self, clusters):
+    def plot_clusterized(self, predictions):
         self.power_scatter.setData(
                     self.real_power_data, self.reac_power_data,
-                    brush=qt.mk_colored_brushes(100, clusters),
+                    brush=qt.mk_colored_brushes(100, predictions),
                     size=10)
 
         self.power_scatter.addPoints(pos=self.prototypes,
             brush=qt.brush(255, 255, 255, 255), size=7)
 
     def button_tag_clicked(self):
-        self.states = []
-        texts = []
+        self.labels = []
 
         arrow = qt.arrow(angle=-160, tipAngle=60,
                             headLen=40, tailLen=40, tailWidth=20,
                             pen={'color': 'w', 'width': 3})
         self.power_plot.addItem(arrow)
 
-        ok = True
         try:
             for i, prototype in enumerate(self.prototypes):
                 arrow.setPos(prototype[0]-0.2, prototype[1]+0.2)
                 qt.update_gui()
 
                 current_state = qt.input_dialog("Nome do estado", "")
-                self.states.append(current_state)
+                self.labels.append(current_state)
 
                 text = qt.text(current_state, anchor=(0.5, 0))
                 text.setPos(prototype[0], prototype[1]-0.5)
                 self.power_plot.addItem(text)
-                texts.append(text)
         except qt.UserCancelError:
-            ok = False
+            return
         
         self.power_plot.removeItem(arrow)
-        if not ok:
-            self.power_plot.removeItem(arrow)
-            for text in texts:
-                self.power_plot.removeItem(text)
-            return
-
-        # TODO gerar assinaturas (diferenças entre os estados)
 
         self.button_cluster.setEnabled(False)
         self.button_tag.setEnabled(False)
-        self.button_save.setEnabled(True)
+        self.button_sign.setEnabled(True)
+
+    def button_sign_clicked(self):
+        pass
 
     def button_save_clicked(self):
         self.button_save.setEnabled(False)

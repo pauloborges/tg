@@ -63,7 +63,7 @@ def button(**kwargs):
     return QtGui.QPushButton(**kwargs)
 
 def spinbox():
-    return QtGui.QDoubleSpinBox()
+    return QtGui.QSpinBox()
 
 def label(text):
     return QtGui.QLabel(text=text)
@@ -77,10 +77,10 @@ def gen_colors(indexes, alpha):
 
     return {
         i: pg.mkBrush(
-            i == 0 and 255 or random.randint(0, 255),
-            i == 0 and 255 or random.randint(0, 255),
-            i == 0 and 255 or random.randint(0, 255),
-            i == 0 and 50 or alpha
+            i == -1 and 255 or random.randint(0, 255),
+            i == -1 and 255 or random.randint(0, 255),
+            i == -1 and 255 or random.randint(0, 255),
+            i == -1 and 50 or alpha
         ) 
         for i in indexes
     }
