@@ -75,7 +75,7 @@ static void monitor(void)
         real_power.n = sum_real_power / num_samples;
 
         SEND_AGRE_EVENT(rms_voltage.b, rms_current.b, real_power.b);
-        // DEBUG_INIT(); DEBUG_END(num_samples);
+        DEBUG_INIT(); DEBUG_END(num_samples);
     }
 }
 

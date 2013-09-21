@@ -123,6 +123,50 @@ static void fake_sample(void)
 #define REAL_VOLTAGE_SAMPLE() analogRead(VOLTAGE_PIN)
 #define REAL_CURRENT_SAMPLE() analogRead(CURRENT_PIN)
 
+class filter
+{
+    public:
+        filter()
+        {
+            for(int i=0; i <= 4; i++)
+                v[i]=0.0;
+        }
+    private:
+        float v[5];
+    public:
+        float step(float x) //class II 
+        {
+            v[0] = v[1];
+            v[1] = v[2];
+            v[2] = v[3];
+            v[3] = v[4];
+            v[4] = (8.083795703448e-2 * x)
+                 + ( -0.2794466551 * v[0])
+                 + (  1.4999135807 * v[1])
+                 + ( -3.1332744411 * v[2])
+                 + (  2.9118874286 * v[3]);
+            return 
+                 (v[0] + v[4])
+                - 2 * v[2];
+        }
+};
+
+static float v[5];
+
+#define FILTER_STEP(in, out)                                    \
+    do {                                                        \
+        v[0] = v[1];                                            \
+        v[1] = v[2];                                            \
+        v[2] = v[3];                                            \
+        v[3] = v[4];                                            \
+        v[4] = (8.083795703448e-2 * in)                         \
+             + ( -0.2794466551 * v[0])                          \
+             + (  1.4999135807 * v[1])                          \
+             + ( -3.1332744411 * v[2])                          \
+             + (  2.9118874286 * v[3]);                         \
+        out = (v[0] + v[4]) - 2 * v[2];                         \
+    } while (0)
+
 static void real_sample(void)
 {
     last_raw_voltage = raw_voltage;
@@ -132,7 +176,7 @@ static void real_sample(void)
     raw_current = REAL_CURRENT_SAMPLE();
 
     // DEBUG_INIT(); DEBUG("Before: "); DEBUG_END(raw_current);
-    raw_current &= ~0x0001;
+    // raw_current &= ~0x0001;
     // DEBUG_INIT(); DEBUG("After: "); DEBUG_END(raw_current);
 
     last_fixed_voltage = fixed_voltage;
@@ -143,7 +187,10 @@ static void real_sample(void)
     last_current = current.n;
 
     voltage.n = fixed_voltage - VOLTAGE_OFFSET;
-    current.n = raw_current - CURRENT_OFFSET;
+    // current.n = raw_current - CURRENT_OFFSET;
+    // current.n = 0.996 * (last_current +
+    //     (raw_current - last_raw_current));
+    FILTER_STEP(raw_current, current.n);
 
     sum_rms_voltage += voltage.n * voltage.n;
     sum_rms_current += current.n * current.n;
@@ -206,4 +253,7 @@ void setup_powermeter(void)
     // sbi(ADCSRA, ADPS2);
     // sbi(ADCSRA, ADPS1);
     // sbi(ADCSRA, ADPS0);
+
+    for(int i = 0; i <= 4; i++)
+        v[i] = 0.0;
 }

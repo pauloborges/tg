@@ -197,9 +197,11 @@ class CalibrateOffset(CalibrateOption):
         opcode, data = dec_message(message)
 
         if opcode == RESPONSE.RAW:
-            self.data.append(self.extract_data(data))
-
             self.number_of_samples -= 1
+
+            if self.number_of_samples < 20000:
+                self.data.append(self.extract_data(data))
+
             if self.number_of_samples == 0:
                 self.arduino.send_message(enc_stop_request())
                 self.process_data_and_quit()
